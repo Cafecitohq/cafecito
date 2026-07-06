@@ -1,0 +1,17 @@
+# Phase 0 working data (cloned repos, experiment results)
+phase0/workdir/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node
+node_modules/
+
+# Rust
+target/
+
+# OS / editor
+.DS_Store
+*.swp
