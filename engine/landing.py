@@ -21,6 +21,7 @@ import fcntl
 import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
@@ -109,8 +110,8 @@ class Engine:
         out = {"tip": tip, "branch": self.config["branch"],
                "hint": f"work from {tip[:12]}; commit; then submit your HEAD sha"}
         if create_worktree:
-            wt = pathlib.Path(tempfile.mkdtemp(
-                prefix=f"cafecito-{(agent or 'agent')[:12]}-"))
+            safe = re.sub(r"[^A-Za-z0-9_-]", "-", agent or "agent")[:12]
+            wt = pathlib.Path(tempfile.mkdtemp(prefix=f"cafecito-{safe}-"))
             path = wt / "wt"
             git(self.repo, "worktree", "add", "--detach", "--quiet", str(path), tip)
             out["worktree"] = str(path)

@@ -127,7 +127,10 @@ class MCPClient:
 
     def tool(self, name: str, **args) -> dict:
         r = self._rpc("tools/call", {"name": name, "arguments": args})
-        return json.loads(r["content"][0]["text"])
+        text = r["content"][0]["text"]
+        if r.get("isError"):
+            raise RuntimeError(f"{name}: {text}")
+        return json.loads(text)
 
     def close(self) -> None:
         self.proc.stdin.close()
