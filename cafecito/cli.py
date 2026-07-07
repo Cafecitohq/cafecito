@@ -55,6 +55,12 @@ def cmd_serve(args) -> int:
     return serve(_engine(args))
 
 
+def cmd_sync(args) -> int:
+    r = _engine(args).sync(agent=args.agent, create_worktree=args.worktree)
+    print(json.dumps(r, indent=1))
+    return 0
+
+
 def cmd_submit(args) -> int:
     r = _engine(args).submit(args.ref, agent=args.agent, title=args.title or "")
     print(json.dumps(r, indent=1))
@@ -112,6 +118,12 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("serve", help="run the MCP server on stdio")
     common(p)
     p.set_defaults(fn=cmd_serve)
+
+    p = sub.add_parser("sync", help="landed tip; --worktree creates a ready worktree")
+    common(p)
+    p.add_argument("--worktree", action="store_true")
+    p.add_argument("--agent", default="cli")
+    p.set_defaults(fn=cmd_sync)
 
     p = sub.add_parser("submit", help="land a committed changeset")
     common(p)
