@@ -65,6 +65,7 @@ python3 experiment_a.py --repo <path-to-clone> --since 2024-06-01   # commutativ
 python3 find_conflicts.py --repo <path-to-clone>                    # attributed conflict corpus
 python3 experiment_b.py --repo <path-to-clone> --max-pairs 5        # regenerative merge
 python3 validate_b.py --repo <path-to-clone>                        # dual test-suite validation
+python3 agent_corpus.py --repo <clone> --targets <files...>         # uncoordinated-fleet corpus
 ```
 
 Python 3.11+ and git ≥ 2.38. Stdlib only — no dependencies. See [phase0/README.md](phase0/README.md)

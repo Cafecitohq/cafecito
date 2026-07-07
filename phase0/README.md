@@ -77,6 +77,39 @@ changesets carry explicit intent + acceptance criteria); pairs with >2 conflicte
 non-Python conflicts are skipped in v0; single-ecosystem bias (scientific Python) until more
 repos are measured.
 
+## Agent-generated corpus — `agent_corpus.py`
+
+The human corpus above under-produces conflicts by construction: maintainers coordinate
+socially before conflicts form, and painful branches never merge. Agent fleets have neither
+property. `agent_corpus.py` measures that directly: a model drafts a realistic sprint backlog
+scoped to hotspot files, each task goes to a fresh headless agent (`claude -p`, edit-only
+tools) in its own worktree at the **same base commit**, blind to the other agents; non-empty
+diffs are committed with the task brief as the message — so downstream **intents are real
+intents**, not commit-message proxies. Pairs get the experiment A treatment (attribution is
+trivial: shared base), and conflicts flow into `experiment_b.py` / `validate_b.py` unchanged
+via `--results workdir/results/agent`.
+
+Deliberate bias, stated up front: tasks concentrate on hotspot files to measure conflict
+*behavior under contention*, not fleet-wide conflict *rates*.
+
+### First fleet run (sympy @ 2026-07-06 · 8 agents · 2 target files · model: sonnet)
+
+| metric | agent corpus | human corpus | read |
+|---|---|---|---|
+| file-disjoint | **57.1%** | 91–100% | uncoordinated agents pile onto the same files |
+| symbol-disjoint | **96.4%** | 97.4% | …but still mostly touch different symbols — file-level locking would serialize 43% of pairs; the symbol oracle lands 96.4% in parallel |
+| textual conflict | **3.6%** | ~0.1% | ~30× the human conflict density, in line with the selection-bias prediction |
+| silent risk | 3.6% | 2.5% | clean textual merge, same symbol touched |
+
+All 8 agents produced usable changesets. The one textual conflict is *two agents colliding in
+the shared test file* (both extending `test_cache.py`) — test files as fleet hotspots is
+exactly what fleet operators report. Regenerative merge: heuristic 1.0, **semantic PASS** —
+the merged state runs the union of both agents' tests (6) green.
+
+Known validator edge (unhit here, verified by name inspection): two sides defining
+*same-named* test functions would shadow silently in Python; a def-name union check is a
+cheap future hardening.
+
 ## Results — 2026-07-06 (raw JSON in `workdir/results/`)
 
 ### Experiment A (branches merged since 2024-06-01; up to 400 sampled concurrent pairs)
