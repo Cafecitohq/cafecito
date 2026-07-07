@@ -54,15 +54,23 @@ messages as proxy), and regenerates the merged file(s) from scratch.
 python3 experiment_b.py --repo workdir/repos/numpy --max-pairs 4 --model sonnet
 ```
 
-**v0 validation, stated honestly:**
+**Two validation tiers:**
 
-- `parse` — output must be valid Python.
-- `incorporation` — fraction of each side's added lines present in the merged output;
-  PASS needs ≥ 0.6 on *both* sides plus a clean parse.
+- *v0 heuristic* (`experiment_b.py`): output parses + ≥60% of each side's added lines
+  incorporated. Cheap, but structurally blind to legitimate rewrites (a merge that correctly
+  renames the other side's code scores low).
+- *Semantic* (`validate_b.py`): dual test-suite execution. Three states are materialized as
+  detached worktrees — OURS (one branch replayed onto the other's base), THEIRS (the other
+  head), and MERGED (the attributed merge tree with regenerated regions spliced in). Each
+  side's tests (test files that side changed + the sibling `tests/test_<stem>.py` of each
+  conflicted source) first run in their **home** state; only home-passing tests count as
+  signal, which filters flaky/broken/env-incompatible tests per side. Verdict `pass` requires
+  every surviving test green in MERGED **and** ≥1 surviving test on each side (otherwise
+  `partial` — never silently upgraded).
 
-This is a proxy for "both intents survived," **not** semantic correctness. The real gate —
-running both branches' test suites against the merged state in a sandbox — is the next
-milestone here. Numbers below are labeled v0 accordingly.
+Sandboxing v1 is process-level: dedicated venv, detached worktrees, temp HOME, CPU rlimit,
+per-file wall-clock timeout. Same trust level as running an OSS project's tests locally;
+container isolation is future hardening for untrusted corpora.
 
 Other known limitations: commit messages are a weak stand-in for true intents (production
 changesets carry explicit intent + acceptance criteria); pairs with >2 conflicted files or
@@ -86,10 +94,10 @@ scipy 0/371).
 
 ### Experiment B (all usable attributed conflicts; model: sonnet)
 
-| repo | pairs tried | regen PASS (v0) | notes |
-|---|---|---|---|
-| sympy | 2 | 1 | FAIL is a rename-PR × logic-fix pair scoring 0.5 incorporation — verbatim-line matching can't credit a merge that correctly *rewrites* the fix under new names; test-execution validation needed to adjudicate |
-| matplotlib | 0 | — | its only conflict is a YAML workflow file (v0 is Python-only) |
+| repo | pairs tried | heuristic PASS (v0) | semantic PASS (tests) | notes |
+|---|---|---|---|---|
+| sympy | 2 | 1 | **2/2** | the heuristic FAIL (rename-PR × logic-fix, 0.5 incorporation) is adjudicated **correct** by tests — the regeneration properly rewrote the fix under the renamed API. In pair 2, THEIRS added 4 new tests; the merged state runs all 173 green, i.e. the union of both sides' acceptance criteria holds |
+| matplotlib | 0 | — | — | its only conflict is a YAML workflow file (v0 is Python-only) |
 
 ### Findings so far
 
@@ -106,6 +114,9 @@ scipy 0/371).
    never enter the corpus). Agent fleets lack that implicit coordination — true conflict
    density will be higher. Measuring on an agent-generated corpus is the next data milestone;
    leases exist precisely to replace the social coordination humans do for free.
-5. **Regenerative merge needs semantic validation before the number is claimable.** The v0
-   incorporation heuristic under-credits legitimate rewrites (see the rename FAIL). Milestone:
-   sandboxed dual test-suite execution per merged state.
+5. **Regenerative merge: 2/2 semantic PASS on the attributed corpus.** Every genuinely
+   conflicting Python pair we found regenerates into a state where all of both sides'
+   home-passing tests stay green — including one the line-level heuristic wrongly failed
+   (line heuristics can't credit correct rewrites; tests can). n=2 is far too small to claim a
+   rate; it is exactly enough to claim the *mechanism works end-to-end*. Growing n needs more
+   repos and an agent-generated corpus, not a better harness — the harness is now the easy part.
