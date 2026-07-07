@@ -1,9 +1,8 @@
 # Launch checklist
 
-Current state (2026-07-07): **teaser is live at https://cafeci.to** (HTTPS), served from the
-public repo `cafecitohq/web`. This code repo (`cafecitohq/cafecito`) is **private**. The full
-landing page is ready at [docs/index.html](docs/index.html); its GitHub links resolve the
-moment this repo goes public.
+**LAUNCHED 2026-07-07.** Code repo public, full landing page live at https://cafeci.to,
+install verified from a clean environment (`pip install git+…` → working binary). Remaining
+below: HN submission (Victor's account) and optional post-launch items.
 
 ## Architecture
 
@@ -28,12 +27,12 @@ repo public.
 
 ## Launch day (in order)
 
-1. **Flip the code repo public:** `gh repo edit cafecitohq/cafecito --visibility public --accept-visibility-change-consequences`
-2. **Swap teaser → full site:** copy [docs/index.html](docs/index.html) into the `web` repo as
+1. ✅ ~~Flip the code repo public:~~ done — `gh repo edit cafecitohq/cafecito --visibility public --accept-visibility-change-consequences`
+2. ✅ ~~Swap teaser → full site:~~ done — copy [docs/index.html](docs/index.html) into the `web` repo as
    `index.html` (its `github.com/cafecitohq/cafecito` links now resolve), commit, push. Pages
    redeploys `cafeci.to` in ~1 min.
-3. **Verify:** `curl -sI https://cafeci.to` → 200; click through GitHub / story / spec links.
-4. **Publish the post:** the story is [docs/launch-post.md](docs/launch-post.md). Post to HN
+3. ✅ ~~Verify:~~ done (site 200, all links 200, stranger-install works) — `curl -sI https://cafeci.to` → 200; click through GitHub / story / spec links.
+4. ⏳ **Publish the post (Victor):** the story is [docs/launch-post.md](docs/launch-post.md). Post to HN
    with the title *"97% of concurrent code changes don't conflict. Your merge queue serializes
    100% of them."* Link `cafeci.to`.
 5. **(Optional) PyPI:** `python3 -m build && twine upload dist/*` — name `cafecito` was free
