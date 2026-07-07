@@ -7,6 +7,12 @@
 > [bench/](bench/)); the landing engine and MCP server now run for real. Not yet: multi-repo,
 > GitHub App, hosted anything. Expect sharp edges.
 
+![Three agents land in parallel: two commute, one collision is regenerated live, main ends green](examples/demo.gif)
+
+*34 unedited seconds: three agents branch from the same commit; two commute and land in
+parallel, the third collides and is regenerated from both intents by a live reconciler call —
+gated, trailer-stamped, main green. Run it yourself: [`examples/demo.sh`](examples/demo.sh).*
+
 ## Quickstart (v0.1)
 
 ```sh

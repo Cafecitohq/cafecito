@@ -26,3 +26,6 @@ dist/
 
 # local preview config
 .claude/launch.json
+
+# maintainer-local Claude instructions (private handbook pointer)
+CLAUDE.local.md

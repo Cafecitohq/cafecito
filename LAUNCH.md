@@ -15,13 +15,16 @@ repo public.
 
 ## Before launch
 
-- [ ] Record the demo — `asciinema rec demo.cast -c "DEMO_DELAY=1.4 ./examples/demo.sh"`
-      (checklist in [examples/README.md](examples/README.md)); host the cast (asciinema.org)
-      or export a GIF for the site + README.
+- [x] Record the demo — done 2026-07-07: [examples/demo.cast](examples/demo.cast) (34s,
+      asciicast v3, live reconciler call) + [examples/demo.gif](examples/demo.gif) (agg,
+      coffee theme, 983×694, ~1 MB), embedded in README and the landing page (raw URL
+      resolves when the repo goes public). Optional: upload the cast to asciinema.org for a
+      scrubbable player. Re-record: `PATH=<venv-with-cafecito+pytest>/bin:$PATH asciinema rec
+      --window-size 100x30 -c "DEMO_DELAY=1.4 ./examples/demo.sh" demo.cast`.
 - [ ] (Optional, security) Verify `cafeci.to` on the org: GitHub → org `Cafecitohq` settings →
       Pages / Verified domains → add the `_github-pages-challenge-cafecitohq` TXT at Namecheap.
       Prevents any other account from ever claiming the domain on Pages.
-- [ ] Add a SECURITY.md (`security@cafeci.to` already forwards).
+- [x] Add a SECURITY.md (`security@cafeci.to` already forwards) — done 2026-07-07.
 
 ## Launch day (in order)
 
