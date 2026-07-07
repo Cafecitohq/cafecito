@@ -23,3 +23,6 @@ target/
 build/
 dist/
 *.egg-info/
+
+# local preview config
+.claude/launch.json

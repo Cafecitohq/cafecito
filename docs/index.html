@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cafecito — never resolve a merge conflict again</title>
+<meta name="description" content="An integration control plane for AI agent fleets. 97% of concurrent code changes don't conflict — cafecito lands them in parallel, regenerates the rest, and never resolves a conflict.">
+<meta property="og:title" content="cafecito ☕ — an integration control plane for AI agent fleets">
+<meta property="og:description" content="97% of concurrent code changes don't conflict. Your merge queue serializes 100% of them. cafecito lands in parallel, regenerates collisions, never resolves a conflict.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://cafeci.to">
+<style>
+  :root {
+    --bg: #17120f;
+    --bg-2: #201814;
+    --card: #241b16;
+    --border: #362a22;
+    --ink: #ece2d8;
+    --muted: #a8998c;
+    --dim: #7c6d61;
+    --crema: #d99b63;
+    --teal: #2fa98f;
+    --red: #d9694b;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: var(--sans); line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--crema); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+
+  nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 0; font-size: 15px;
+  }
+  nav .brand { font-weight: 600; letter-spacing: -0.01em; font-size: 17px; color: var(--ink); }
+  nav .links a { color: var(--muted); margin-left: 22px; }
+  nav .links a:hover { color: var(--ink); text-decoration: none; }
+
+  header { padding: 72px 0 56px; }
+  .tag {
+    display: inline-block; font-family: var(--mono); font-size: 12px;
+    color: var(--teal); border: 1px solid var(--border); border-radius: 999px;
+    padding: 5px 13px; margin-bottom: 28px; letter-spacing: 0.02em;
+  }
+  h1 {
+    font-size: clamp(34px, 6vw, 52px); line-height: 1.08;
+    letter-spacing: -0.025em; font-weight: 650; margin-bottom: 22px;
+  }
+  h1 .hl { color: var(--crema); }
+  .sub { font-size: clamp(17px, 2.4vw, 20px); color: var(--muted); max-width: 620px; }
+
+  .cmd {
+    margin: 36px 0 20px; background: #0f0b09; border: 1px solid var(--border);
+    border-radius: 10px; font-family: var(--mono); font-size: 14px;
+    overflow: hidden;
+  }
+  .cmd .row { padding: 13px 16px; display: flex; gap: 10px; align-items: baseline; }
+  .cmd .row + .row { border-top: 1px solid #241b16; }
+  .cmd .p { color: var(--teal); user-select: none; }
+  .cmd code { color: var(--ink); white-space: pre-wrap; }
+  .cmd .c { color: var(--dim); }
+
+  .btns { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 20px; border-radius: 9px; font-size: 15px; font-weight: 500;
+  }
+  .btn-primary { background: var(--crema); color: #1a120b; }
+  .btn-primary:hover { background: #e6a970; text-decoration: none; }
+  .btn-ghost { border: 1px solid var(--border); color: var(--ink); }
+  .btn-ghost:hover { border-color: var(--dim); text-decoration: none; }
+
+  section { padding: 44px 0; border-top: 1px solid var(--border); }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); font-weight: 600; margin-bottom: 28px; }
+
+  .exits { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 640px) { .exits { grid-template-columns: repeat(3, 1fr); } }
+  .exit { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .exit .k { font-family: var(--mono); font-size: 13px; margin-bottom: 10px; font-weight: 600; }
+  .exit.commute .k { color: var(--teal); }
+  .exit.regen .k { color: var(--crema); }
+  .exit.escalate .k { color: var(--red); }
+  .exit p { font-size: 14.5px; color: var(--muted); }
+
+  .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  @media (min-width: 640px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+  .stat { background: var(--bg-2); padding: 22px 18px; }
+  .stat .n { font-size: 27px; font-weight: 650; letter-spacing: -0.02em; }
+  .stat .n.teal { color: var(--teal); }
+  .stat .l { font-size: 12.5px; color: var(--dim); margin-top: 5px; line-height: 1.4; }
+
+  table.bench { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  table.bench th, table.bench td { text-align: left; padding: 12px 10px; border-bottom: 1px solid var(--border); }
+  table.bench th { color: var(--dim); font-weight: 500; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.05em; }
+  table.bench td.num { font-family: var(--mono); text-align: right; }
+  table.bench tr.win td { color: var(--ink); }
+  table.bench tr.win td:first-child { color: var(--teal); font-weight: 600; }
+  table.bench tr:not(.win) td { color: var(--muted); }
+
+  .quote { font-size: 17px; color: var(--muted); border-left: 2px solid var(--crema); padding-left: 18px; margin: 4px 0; }
+  .quote b { color: var(--ink); font-weight: 600; }
+
+  footer { padding: 48px 0 64px; border-top: 1px solid var(--border); color: var(--dim); font-size: 14px; }
+  footer a { color: var(--muted); }
+  footer .fl { margin-bottom: 10px; }
+  footer .fl a { margin-right: 20px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav>
+    <span class="brand">cafecito&nbsp;☕</span>
+    <span class="links">
+      <a href="https://github.com/cafecitohq/cafecito">GitHub</a>
+      <a href="#how">How</a>
+      <a href="#bench">Benchmark</a>
+      <a href="https://github.com/cafecitohq/cafecito/blob/main/SPEC.md">Spec</a>
+    </span>
+  </nav>
+
+  <header>
+    <span class="tag">integration control plane for agent fleets</span>
+    <h1>97% of concurrent code changes <span class="hl">don't conflict</span>.<br>Your merge queue serializes 100% of them.</h1>
+    <p class="sub">Run a fleet of coding agents against one repo and they gridlock — every landing forces the rest to rebase, re-test, and requeue. cafecito lands independent changes in parallel, regenerates the collisions, and never resolves a conflict.</p>
+
+    <div class="cmd">
+      <div class="row"><span class="p">$</span><code>pipx install git+https://github.com/cafecitohq/cafecito</code></div>
+      <div class="row"><span class="p">$</span><code>cafecito init --repo . --test-cmd "pytest -q"</code></div>
+      <div class="row"><span class="p">$</span><code>claude mcp add cafecito -- cafecito serve --repo .</code></div>
+    </div>
+
+    <div class="btns">
+      <a class="btn btn-primary" href="https://github.com/cafecitohq/cafecito">View on GitHub</a>
+      <a class="btn btn-ghost" href="https://github.com/cafecitohq/cafecito/blob/main/docs/launch-post.md">Read the story</a>
+    </div>
+  </header>
+
+  <section id="how">
+    <h2>Every collision takes one of three exits</h2>
+    <div class="exits">
+      <div class="exit commute">
+        <div class="k">commute</div>
+        <p>Write sets provably disjoint — 97% of the time. Land in parallel: no rebase, no re-test of what didn't change.</p>
+      </div>
+      <div class="exit regen">
+        <div class="k">regenerate</div>
+        <p>A real collision. A reconciler agent re-derives the region from <em>both</em> intents; the result must pass the gate. Nobody edits a conflict marker.</p>
+      </div>
+      <div class="exit escalate">
+        <div class="k">escalate</div>
+        <p>Contradictory acceptance criteria — no merge can satisfy both. A human decides. Catching this <em>is</em> the system working.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Measured, not asserted</h2>
+    <div class="stats">
+      <div class="stat"><div class="n teal">97.4%</div><div class="l">of 1,465 concurrent pairs commute · 10 repos</div></div>
+      <div class="stat"><div class="n">14/16</div><div class="l">real conflicts regenerated, both test suites green</div></div>
+      <div class="stat"><div class="n">0.1%</div><div class="l">genuine conflicts in 4,752 file-sharing pairs</div></div>
+      <div class="stat"><div class="n">0 → 36</div><div class="l">tests written &amp; landed by agents, through cafecito itself</div></div>
+    </div>
+  </section>
+
+  <section id="bench">
+    <h2>MergeBench — a real 33-agent burst, landed for real</h2>
+    <table class="bench">
+      <tr><th>strategy</th><th style="text-align:right">wall-clock</th><th style="text-align:right">CI compute</th></tr>
+      <tr><td>serial merge queue</td><td class="num">5.50 h</td><td class="num">93.5 h</td></tr>
+      <tr><td>file locking</td><td class="num">3.03 h</td><td class="num">29.7 h</td></tr>
+      <tr class="win"><td>cafecito</td><td class="num">1.37 h</td><td class="num">16.2 h</td></tr>
+    </table>
+    <p style="color:var(--dim);font-size:13px;margin-top:14px">Projected 10-min CI over measured schedules. 30/33 landed automatically, 3 correctly escalated, final main green — checked by running the combined test suite, not assumed.</p>
+  </section>
+
+  <section>
+    <h2>It builds itself</h2>
+    <p class="quote">cafecito's own test suite was written by uncoordinated agents and landed through cafecito — <b>including the fix for the first bug we found, which the engine landed while that code path was broken.</b></p>
+  </section>
+
+  <footer>
+    <div class="fl">
+      <a href="https://github.com/cafecitohq/cafecito">GitHub</a>
+      <a href="https://github.com/cafecitohq/cafecito/blob/main/SPEC.md">Protocol spec</a>
+      <a href="https://github.com/cafecitohq/cafecito/blob/main/docs/launch-post.md">Launch story</a>
+      <a href="mailto:hello@cafeci.to">hello@cafeci.to</a>
+    </div>
+    Apache-2.0 · land in parallel, regenerate collisions, never resolve a conflict · the coffee is load-bearing ☕
+  </footer>
+
+</div>
+</body>
+</html>
