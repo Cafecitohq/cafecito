@@ -17,7 +17,7 @@ import subprocess
 import tempfile
 import time
 
-from gitutil import show
+from .gitutil import show
 
 MAX_REGIONS = 8
 MAX_PROMPT = 80_000

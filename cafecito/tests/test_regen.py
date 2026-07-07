@@ -2,8 +2,8 @@ import textwrap
 
 import pytest
 
-import regen
-from regen import Region, _test_defs, diff3_segments
+from cafecito import regen
+from cafecito.regen import Region, _test_defs, diff3_segments
 
 
 # ---------------------------------------------------------------------------

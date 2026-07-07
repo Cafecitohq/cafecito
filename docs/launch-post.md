@@ -123,8 +123,9 @@ path didn't depend on it. The engine's first real landing was its own bugfix. Th
 v0.1 is a single-repo control plane, zero dependencies beyond git and Python:
 
 ```sh
-git clone https://github.com/cafecitohq/cafecito && cd cafecito
-claude mcp add cafecito -- python3 $PWD/mcp/server.py --repo /abs/path/to/your/repo
+pipx install git+https://github.com/cafecitohq/cafecito
+cafecito init --repo /path/to/your/repo --test-cmd "python3 -m pytest -q"
+claude mcp add cafecito -- cafecito serve --repo /path/to/your/repo
 ```
 
 Any MCP-capable agent — Claude Code, Cursor, Antigravity — gets four tools: `sync`,

@@ -12,7 +12,7 @@ all landed changes, the materialized branch matches the engine tip, and the
 full test file is green at the tip. Requires the `claude` CLI for agent-c's
 regeneration; pass --no-regen to skip that leg.
 
-Usage:  python3 smoke_test.py [--no-regen] [--pytest-python /path/to/python]
+Usage:  python3 -m cafecito.tests.smoke [--no-regen] [--pytest-python /path/to/python]
 """
 
 from __future__ import annotations
@@ -23,10 +23,8 @@ import subprocess
 import sys
 import tempfile
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-
-from gitutil import git  # noqa: E402
-from landing import Engine  # noqa: E402
+from cafecito.engine import Engine
+from cafecito.gitutil import git
 
 CALC = '''\
 def add(a, b):

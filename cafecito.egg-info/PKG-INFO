@@ -1,3 +1,21 @@
+Metadata-Version: 2.4
+Name: cafecito
+Version: 0.1.0
+Summary: An integration control plane for AI agent fleets: land in parallel, regenerate collisions, never resolve a conflict.
+Author: The cafecito authors
+License: Apache-2.0
+Project-URL: Homepage, https://cafecito.sh
+Project-URL: Source, https://github.com/cafecitohq/cafecito
+Keywords: ai-agents,merge-queue,mcp,ci,git
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Topic :: Software Development :: Version Control :: Git
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: license-file
+
 # cafecito ☕
 
 **An integration control plane for AI agent fleets.**
@@ -10,9 +28,8 @@
 ## Quickstart (v0.1)
 
 ```sh
-pipx install git+https://github.com/cafecitohq/cafecito   # or: pip install . from a clone
-cafecito init --repo /path/to/your/repo --test-cmd "python3 -m pytest -q"
-claude mcp add cafecito -- cafecito serve --repo /path/to/your/repo
+git clone <this repo> && cd cafecito
+claude mcp add cafecito -- python3 $PWD/mcp/server.py --repo /abs/path/to/your/repo
 ```
 
 Any MCP-capable agent then coordinates through four tools: `sync` (get the landed tip or a
@@ -20,8 +37,7 @@ ready worktree), `reserve` (advisory leases on symbols before starting work), `s
 committed changeset), `status`. Commuting changesets land immediately; collisions are
 regenerated from both intents by a reconciler; **every** landing passes a real test gate; main
 is materialized as a normal git branch (`cafecito/main`). Agents never rebase and never see a
-conflict marker. Humans drive it from the shell: `cafecito submit | status | log | advance`.
-Prove it locally: `python3 -m cafecito.tests.smoke`.
+conflict marker. Prove it locally: `python3 engine/smoke_test.py`.
 
 ## The problem
 
@@ -68,9 +84,11 @@ market category it replaces (see [SPEC.md §1.1](SPEC.md)).
 |---|---|---|
 | [phase0/](phase0/) | Falsification experiments A (commutativity rate) and B (regenerative-merge success rate) on real repos | **active** |
 | [SPEC.md](SPEC.md) | Protocol draft: changesets, leases, landed log, MCP surface | draft v0 |
-| [cafecito/](cafecito/) | The product: oracle write sets, landing engine (merge/regenerate/gate/landed log), MCP server, CLI — `pip install`able, zero dependencies | **v0.1** |
+| [oracle/](oracle/) | Conflict oracle — symbol-level write-set derivation | **v0.1** |
+| [engine/](engine/) | Landing pipeline: oracle → merge/regenerate → gate → landed log → materialized branch | **v0.1** |
+| [mcp/](mcp/) | MCP server (`sync` / `reserve` / `submit` / `status`), zero-dependency stdio | **v0.1** |
 | [sdk/](sdk/) | TypeScript / Python client SDKs | design |
-| [gateway/](gateway/) | Full git gateway (v0.1 materializes a branch + `advance` ingestion; PR ingestion pending) | design |
+| [gateway/](gateway/) | Full git gateway (v0.1 materializes a branch; PR ingestion pending) | design |
 | [bench/](bench/) | MergeBench — a real 33-agent burst: 5.5h serial queue vs **1.37h** cafecito (10-min CI), 93.5 vs 16.2 CI-hours, landed for real with green main | **active** |
 | [PLAN.md](PLAN.md) | Full project plan, roadmap, and competitive analysis | living doc |
 

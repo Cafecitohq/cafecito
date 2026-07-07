@@ -1,4 +1,4 @@
-import landing
+from cafecito import engine as landing
 
 
 def test_clean_message():

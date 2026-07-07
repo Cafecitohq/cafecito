@@ -18,12 +18,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import pathlib
 import sys
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "engine"))
-
-from landing import Engine  # noqa: E402
+from .engine import Engine
 
 PROTOCOL_VERSION = "2024-11-05"
 
@@ -136,11 +133,7 @@ def handle(engine: Engine, method: str, params: dict):
     raise KeyError(method)
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--repo", required=True)
-    args = ap.parse_args()
-    engine = Engine(args.repo)
+def serve(engine: Engine) -> int:
     print(f"cafecito mcp server: repo={engine.repo} "
           f"branch={engine.config['branch']}", file=sys.stderr)
 
@@ -168,6 +161,13 @@ def main() -> int:
         sys.stdout.write(json.dumps(resp) + "\n")
         sys.stdout.flush()
     return 0
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--repo", required=True)
+    args = ap.parse_args()
+    return serve(Engine(args.repo))
 
 
 if __name__ == "__main__":

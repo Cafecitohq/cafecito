@@ -15,7 +15,7 @@ from __future__ import annotations
 import ast
 import re
 
-from gitutil import git, show
+from .gitutil import git, show
 
 HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 

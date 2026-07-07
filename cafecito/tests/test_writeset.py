@@ -2,8 +2,8 @@ import textwrap
 
 import pytest
 
-import writeset
-from writeset import _attribute, python_symbols
+from cafecito import writeset
+from cafecito.writeset import _attribute, python_symbols
 
 
 # ---------------------------------------------------------------------------

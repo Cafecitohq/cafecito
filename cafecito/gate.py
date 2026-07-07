@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 import time
 
-from gitutil import git, git_rc
+from .gitutil import git, git_rc
 
 
 def impact_tests(repo: str, paths: set[str], rev: str) -> set[str]:

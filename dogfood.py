@@ -89,10 +89,9 @@ TASK: {title}
 {brief}
 
 Rules: create or modify ONLY these paths: {paths}. Tests must be deterministic \
-and use only the standard library + pytest. The repo-root conftest.py already \
-puts engine/ and oracle/ on sys.path, so tests import product modules directly: \
-`import writeset`, `import regen`, `import gate`, `import landing`. Keep the \
-diff small and match the existing style. Do not run tests or any shell \
+and use only the standard library + pytest. Product code lives in the \
+`cafecito` package: `from cafecito import writeset, regen, gate, engine`. Keep \
+the diff small and match the existing style. Do not run tests or any shell \
 commands. Make the edits, then stop and summarize in one sentence.
 """
 
@@ -102,8 +101,8 @@ class MCPClient:
 
     def __init__(self, repo: str):
         self.proc = subprocess.Popen(
-            [sys.executable, str(ROOT / "mcp" / "server.py"), "--repo", repo],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            [sys.executable, "-m", "cafecito.mcp_server", "--repo", repo],
+            cwd=str(ROOT), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL, text=True)
         self._id = 0
         r = self._rpc("initialize", {"protocolVersion": "2024-11-05"})

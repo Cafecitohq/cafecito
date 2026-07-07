@@ -2,7 +2,7 @@ import subprocess
 
 import pytest
 
-from gate import impact_tests
+from cafecito.gate import impact_tests
 
 
 def _make_repo(tmp_path):

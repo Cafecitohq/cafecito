@@ -23,26 +23,23 @@ import os
 import pathlib
 import re
 import subprocess
-import sys
 import tempfile
 import time
 import uuid
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "oracle"))
-
-from gate import impact_tests, run_gate  # noqa: E402
-from gitutil import git, git_rc  # noqa: E402
-from regen import live_regen  # noqa: E402
-from writeset import write_set  # noqa: E402
+from .gate import impact_tests, run_gate
+from .gitutil import git, git_rc
+from .regen import live_regen
+from .writeset import write_set
 
 DEFAULT_CONFIG = {
     "branch": "cafecito/main",
-    "test_cmd": [sys.executable, "-m", "pytest", "-q", "--tb=line",
+    "test_cmd": ["python3", "-m", "pytest", "-q", "--tb=line",
                  "-p", "no:cacheprovider"],
     "reconciler_model": "sonnet",
     "lease_ttl_s": 900,
     "gate_timeout_s": 900,
+    "require_signal": False,
 }
 
 
@@ -53,6 +50,7 @@ class Engine:
             raise RuntimeError(f"not a git repository: {self.repo}")
         self.state_dir = pathlib.Path(self.repo) / ".cafecito"
         self.state_dir.mkdir(exist_ok=True)
+        self._exclude_state_dir()
         self.config = dict(DEFAULT_CONFIG)
         cfg = self.state_dir / "config.json"
         if cfg.exists():
@@ -62,6 +60,26 @@ class Engine:
         self._init_state()
 
     # ------------------------------------------------------------- state ---
+
+    def _exclude_state_dir(self) -> None:
+        """Keep engine state out of the user's git history via info/exclude —
+        `git add -A` must never stage .cafecito/ (dogfood-adjacent finding:
+        a committed landed log breaks branch switching)."""
+        code, out, _ = git_rc(self.repo, "rev-parse", "--git-common-dir")
+        if code != 0:
+            return
+        exclude = pathlib.Path(out.strip())
+        if not exclude.is_absolute():
+            exclude = pathlib.Path(self.repo) / exclude
+        exclude = exclude / "info" / "exclude"
+        try:
+            existing = exclude.read_text() if exclude.exists() else ""
+            if ".cafecito/" not in existing:
+                exclude.parent.mkdir(parents=True, exist_ok=True)
+                with exclude.open("a") as f:
+                    f.write("\n# cafecito engine state\n.cafecito/\n")
+        except OSError:
+            pass
 
     def _init_state(self) -> None:
         with self._lock():
@@ -207,13 +225,17 @@ class Engine:
             gate = run_gate(self.repo, candidate, gate_files,
                             self.config["test_cmd"],
                             timeout=self.config["gate_timeout_s"])
-            if not gate["green"]:
+            no_signal_refused = (gate["green"] and gate.get("no_signal")
+                                 and self.config.get("require_signal"))
+            if not gate["green"] or no_signal_refused:
+                reason = ("no test signal (require_signal)" if no_signal_refused
+                          else "failed landing gate")
                 entry = {"id": cs_id, "verdict": "escalated", "title": title,
                          "agent": agent, "head": head,
-                         "reason": "failed landing gate", "gate": gate}
+                         "reason": reason, "gate": gate}
                 self._append_log(entry)
                 return {"verdict": "escalated", "id": cs_id,
-                        "reason": "failed landing gate", "gate": gate}
+                        "reason": reason, "gate": gate}
 
             self._set_tip(candidate)
             if agent:  # landing releases the agent's leases
@@ -227,6 +249,30 @@ class Engine:
             self._append_log(entry)
             return {"verdict": "landed", "id": cs_id, "tip": candidate,
                     "regenerated": regen_s is not None, "gate": gate}
+
+    def advance(self, to: str = "HEAD") -> dict:
+        """Follow out-of-band commits: move the landed tip to a descendant.
+
+        For commits made outside cafecito (maintainer pushes docs to main).
+        The target must contain the current tip; the move is recorded in the
+        landed log. Dogfood finding #4."""
+        code, out, _ = git_rc(self.repo, "rev-parse", "--verify", f"{to}^{{commit}}")
+        if code != 0:
+            return {"verdict": "rejected", "reason": f"unknown ref {to!r}"}
+        new = out.strip()
+        with self._lock():
+            tip = self._tip()
+            if new == tip:
+                return {"verdict": "noop", "tip": tip}
+            code, _, _ = git_rc(self.repo, "merge-base", "--is-ancestor", tip, new)
+            if code != 0:
+                return {"verdict": "rejected",
+                        "reason": "target does not contain the landed tip"}
+            self._set_tip(new)
+            self._append_log({"id": f"adv_{uuid.uuid4().hex[:10]}",
+                              "verdict": "advanced", "head": new,
+                              "title": f"tip advanced to {new[:12]}"})
+            return {"verdict": "advanced", "tip": new}
 
 
 def _land_message(title: str, cs_id: str, regenerated: bool = False) -> str:
