@@ -3,9 +3,23 @@
 **An integration control plane for AI agent fleets.**
 *Prove independence when you can. Re-derive when you can't. Never resolve a conflict.*
 
-> ⚠️ **Status: Phase 0 — validating the physics.** Nothing here is production software yet.
-> What exists today is the [protocol draft](SPEC.md) and two reproducible experiments
-> ([phase0/](phase0/)) that test whether the core bets hold on real repositories.
+> **Status: v0.1 — usable on your laptop.** The physics is validated ([phase0/](phase0/),
+> [bench/](bench/)); the landing engine and MCP server now run for real. Not yet: multi-repo,
+> GitHub App, hosted anything. Expect sharp edges.
+
+## Quickstart (v0.1)
+
+```sh
+git clone <this repo> && cd cafecito
+claude mcp add cafecito -- python3 $PWD/mcp/server.py --repo /abs/path/to/your/repo
+```
+
+Any MCP-capable agent then coordinates through four tools: `sync` (get the landed tip or a
+ready worktree), `reserve` (advisory leases on symbols before starting work), `submit` (land a
+committed changeset), `status`. Commuting changesets land immediately; collisions are
+regenerated from both intents by a reconciler; **every** landing passes a real test gate; main
+is materialized as a normal git branch (`cafecito/main`). Agents never rebase and never see a
+conflict marker. Prove it locally: `python3 engine/smoke_test.py`.
 
 ## The problem
 
@@ -52,11 +66,11 @@ market category it replaces (see [SPEC.md §1.1](SPEC.md)).
 |---|---|---|
 | [phase0/](phase0/) | Falsification experiments A (commutativity rate) and B (regenerative-merge success rate) on real repos | **active** |
 | [SPEC.md](SPEC.md) | Protocol draft: changesets, leases, landed log, MCP surface | draft v0 |
-| [oracle/](oracle/) | Conflict oracle — symbol-level write-set derivation | pending Phase 0 results |
-| [engine/](engine/) | Control plane: intake, landing planner, landed log | design |
-| [mcp/](mcp/) | MCP server (`reserve` / `submit` / `status` / `sync`) | design |
+| [oracle/](oracle/) | Conflict oracle — symbol-level write-set derivation | **v0.1** |
+| [engine/](engine/) | Landing pipeline: oracle → merge/regenerate → gate → landed log → materialized branch | **v0.1** |
+| [mcp/](mcp/) | MCP server (`sync` / `reserve` / `submit` / `status`), zero-dependency stdio | **v0.1** |
 | [sdk/](sdk/) | TypeScript / Python client SDKs | design |
-| [gateway/](gateway/) | Git materialization of the landed log | design |
+| [gateway/](gateway/) | Full git gateway (v0.1 materializes a branch; PR ingestion pending) | design |
 | [bench/](bench/) | MergeBench — a real 33-agent burst: 5.5h serial queue vs **1.37h** cafecito (10-min CI), 93.5 vs 16.2 CI-hours, landed for real with green main | **active** |
 | [PLAN.md](PLAN.md) | Full project plan, roadmap, and competitive analysis | living doc |
 
