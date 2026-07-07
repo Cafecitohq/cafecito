@@ -1,0 +1,362 @@
+{
+ "fleet": 33,
+ "base": "8960d6e8b13162158cd625dd6186bae0826ab5a2",
+ "ci_minutes": 10.0,
+ "curves": {
+  "serial": {
+   "wall": [
+    [
+     4,
+     2400.0
+    ],
+    [
+     8,
+     4800.0
+    ],
+    [
+     12,
+     7200.0
+    ],
+    [
+     16,
+     9600.0
+    ],
+    [
+     20,
+     12000.0
+    ],
+    [
+     24,
+     14400.0
+    ],
+    [
+     28,
+     16800.0
+    ],
+    [
+     33,
+     19800.0
+    ]
+   ],
+   "total": [
+    [
+     4,
+     6000.0
+    ],
+    [
+     8,
+     21600.0
+    ],
+    [
+     12,
+     46800.0
+    ],
+    [
+     16,
+     81600.0
+    ],
+    [
+     20,
+     126000.0
+    ],
+    [
+     24,
+     180000.0
+    ],
+    [
+     28,
+     243600.0
+    ],
+    [
+     33,
+     336600.0
+    ]
+   ]
+  },
+  "filelock": {
+   "wall": [
+    [
+     4,
+     4800.0
+    ],
+    [
+     8,
+     4814.8
+    ],
+    [
+     12,
+     9634.7
+    ],
+    [
+     16,
+     10892.3
+    ],
+    [
+     20,
+     10906.0
+    ],
+    [
+     24,
+     10906.0
+    ],
+    [
+     28,
+     10906.0
+    ],
+    [
+     33,
+     10919.9
+    ]
+   ],
+   "total": [
+    [
+     4,
+     8400.0
+    ],
+    [
+     8,
+     17400.0
+    ],
+    [
+     12,
+     36600.0
+    ],
+    [
+     16,
+     57000.0
+    ],
+    [
+     20,
+     72600.0
+    ],
+    [
+     24,
+     82800.0
+    ],
+    [
+     28,
+     93600.0
+    ],
+    [
+     33,
+     106800.0
+    ]
+   ]
+  },
+  "cafecito": {
+   "wall": [
+    [
+     4,
+     2400.0
+    ],
+    [
+     8,
+     2414.8
+    ],
+    [
+     12,
+     2434.7
+    ],
+    [
+     16,
+     4901.1
+    ],
+    [
+     20,
+     4914.8
+    ],
+    [
+     24,
+     4914.8
+    ],
+    [
+     28,
+     4914.8
+    ],
+    [
+     33,
+     4928.7
+    ]
+   ],
+   "total": [
+    [
+     4,
+     5400.0
+    ],
+    [
+     8,
+     11400.0
+    ],
+    [
+     12,
+     19800.0
+    ],
+    [
+     16,
+     30600.0
+    ],
+    [
+     20,
+     38400.0
+    ],
+    [
+     24,
+     43200.0
+    ],
+    [
+     28,
+     48600.0
+    ],
+    [
+     33,
+     58200.0
+    ]
+   ]
+  }
+ },
+ "landing": {
+  "landed": 30,
+  "escalated": [
+   [
+    "Add __repr__ to SympifyError",
+    "failed landing gate"
+   ],
+   [
+    "Fix NameError in SYMPY_CACHE_SIZE error message",
+    "shadowed test defs"
+   ],
+   [
+    "Add input validation to lazy_function",
+    "shadowed test defs"
+   ]
+  ],
+  "final_commit": "ecd03919dbc38dad63a6fa3fadb7af12cb6e4c83",
+  "green": true,
+  "union_tests": 5,
+  "verify_s": 1.73,
+  "regens": [
+   {
+    "title": "Add input validation to lazy_function()",
+    "regen_s": 14.9,
+    "gate_s": 1.1,
+    "gate_green": true,
+    "files": [
+     "sympy/core/tests/test_cache.py"
+    ]
+   },
+   {
+    "title": "Validate the `locals` parameter type at the top of sympify",
+    "regen_s": 21.3,
+    "gate_s": 1.28,
+    "gate_green": true,
+    "files": [
+     "sympy/core/sympify.py",
+     "sympy/core/tests/test_sympify.py"
+    ]
+   },
+   {
+    "title": "Deduplicate __doc__ property across LazyFunctionMeta and LazyFunction",
+    "regen_s": 5.8,
+    "gate_s": 2.83,
+    "gate_green": true,
+    "files": [
+     "sympy/core/cache.py"
+    ]
+   },
+   {
+    "title": "Improve _cache.print_cache and clear_cache docstrings",
+    "regen_s": 18.4,
+    "gate_s": 2.35,
+    "gate_green": true,
+    "files": [
+     "sympy/core/cache.py"
+    ]
+   },
+   {
+    "title": "Replace list.pop(0) in AndOr_Base.flatten with collections.deque",
+    "regen_s": 5.4,
+    "gate_s": 1.97,
+    "gate_green": true,
+    "files": [
+     "sympy/core/logic.py"
+    ]
+   },
+   {
+    "title": "Fix whitespace and expand module-level comments for converter dicts",
+    "regen_s": 27.0,
+    "gate_s": 4.64,
+    "gate_green": true,
+    "files": [
+     "sympy/core/sympify.py"
+    ]
+   },
+   {
+    "title": "Extract a _is_fuzzy_true helper and use it in fuzzy_xor",
+    "regen_s": 11.0,
+    "gate_s": 4.37,
+    "gate_green": true,
+    "files": [
+     "sympy/core/logic.py"
+    ]
+   }
+  ],
+  "gates": {
+   "runs": 31,
+   "seconds": 50.41
+  },
+  "landing_wall_s": 288.9
+ },
+ "table": [
+  {
+   "mode": "serial",
+   "projected": {
+    "wall": 19800.0,
+    "ci": 19800.0,
+    "reval": 316800.0,
+    "waves": 33,
+    "regens": 0
+   },
+   "measured": {
+    "wall": 44.39,
+    "ci": 44.39,
+    "reval": 710.24,
+    "waves": 33,
+    "regens": 0
+   }
+  },
+  {
+   "mode": "filelock",
+   "projected": {
+    "wall": 10919.9,
+    "ci": 45600.0,
+    "reval": 61200.0,
+    "waves": 9,
+    "regens": 10
+   },
+   "measured": {
+    "wall": 146.52,
+    "ci": 102.18000000000002,
+    "reval": 137.20545454545456,
+    "waves": 9,
+    "regens": 10
+   }
+  },
+  {
+   "mode": "cafecito",
+   "projected": {
+    "wall": 4928.7,
+    "ci": 45600.0,
+    "reval": 12600.0,
+    "waves": 4,
+    "regens": 10
+   },
+   "measured": {
+    "wall": 140.35999999999999,
+    "ci": 102.17999999999998,
+    "reval": 28.24818181818182,
+    "waves": 4,
+    "regens": 10
+   }
+  }
+ ]
+}

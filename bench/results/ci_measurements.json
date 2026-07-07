@@ -1,0 +1,233 @@
+{
+ "059ca89294a1ae745ec9544827bd243701e194de": {
+  "tests": [
+   "sympy/core/tests/test_sympify.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.51
+ },
+ "706cc9b09441fb69e22f95415c43825406dd542e": {
+  "tests": [
+   "sympy/core/tests/test_sympify.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.52
+ },
+ "1b5169a71392882e5bf91d56f6a5e2f774369551": {
+  "tests": [
+   "sympy/core/tests/test_sympify.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.41
+ },
+ "b2ee3dc43a4d408ff5a7fe525fc2ad85368f4a1f": {
+  "tests": [
+   "sympy/core/tests/test_sympify.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.41
+ },
+ "e4b9a3cffdc215d3fc96b0504b9f1f064dcbbeca": {
+  "tests": [
+   "sympy/core/tests/test_cache.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.26
+ },
+ "b6a85ee450da589d546537197f9ce5dd7b4a24c9": {
+  "tests": [
+   "sympy/core/tests/test_cache.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.21
+ },
+ "a6593d6fda6edf1c6aff1bbe97930ba30321bb2f": {
+  "tests": [
+   "sympy/core/tests/test_cache.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.2
+ },
+ "96b3df62799a6b933435de03d44b2460cc19cf1a": {
+  "tests": [
+   "sympy/core/tests/test_cache.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.22
+ },
+ "56f46c3c112e0fc2381f95a77c1d0da5cce2214d": {
+  "tests": [
+   "sympy/core/tests/test_sympify.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.4
+ },
+ "c713722c6c856172de1875429983b2130462bdc8": {
+  "tests": [
+   "sympy/core/tests/test_sympify.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.46
+ },
+ "50eac4f7b06a4bbb51e0473ac739bf7fe5d508f3": {
+  "tests": [
+   "sympy/core/tests/test_sympify.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.49
+ },
+ "5ec2305f8d2df6bce01487676f370922a85acb68": {
+  "tests": [
+   "sympy/core/tests/test_sympify.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.46
+ },
+ "3579c42e951c310a56b5705ea0fd4392fbce7b33": {
+  "tests": [
+   "sympy/core/tests/test_sympify.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.42
+ },
+ "ca476421f3e2c57f46c4ff33836d50cf924caa6e": {
+  "tests": [
+   "sympy/core/tests/test_cache.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.58
+ },
+ "7b5f2159c61daa3bc03537d9ca1ac37e5348a144": {
+  "tests": [
+   "sympy/core/tests/test_cache.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.24
+ },
+ "2fcb18a75a81e1dfc5e4040be24aef83fdf1a7d8": {
+  "tests": [
+   "sympy/core/tests/test_cache.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.21
+ },
+ "16d673b71bef9f4a7cdcb4017649857ea0912ab2": {
+  "tests": [
+   "sympy/core/tests/test_cache.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.22
+ },
+ "c66a1a87d8565000adbdd5d2105641d661ac69b6": {
+  "tests": [
+   "sympy/core/tests/test_cache.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.25
+ },
+ "fcef7ef4ad43d1d6270a10640e65f3069a7f2aa4": {
+  "tests": [
+   "sympy/utilities/tests/test_iterables.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.34
+ },
+ "bd711b1f20c52410708ec6eca06876e929212246": {
+  "tests": [
+   "sympy/utilities/tests/test_iterables.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.45
+ },
+ "7e9cae9ce683e5a96502020aeaa737d58be4ddcb": {
+  "tests": [
+   "sympy/utilities/tests/test_iterables.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.41
+ },
+ "8bcf41edb62a3826ae5edb3b29031b744f9d8e14": {
+  "tests": [
+   "sympy/utilities/tests/test_iterables.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.37
+ },
+ "ea283e0fe4f73a35418d6214634d72541396043f": {
+  "tests": [
+   "sympy/utilities/tests/test_iterables.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.32
+ },
+ "80c84bdcf3a7ee81901661123f1a2128c8aa8109": {
+  "tests": [
+   "sympy/core/tests/test_containers.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.29
+ },
+ "8d3712ead7c5640a0a7b5863013cc211dcefec29": {
+  "tests": [
+   "sympy/core/tests/test_containers.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.34
+ },
+ "e594a3bde2edbba4989bf987938d40702c020810": {
+  "tests": [
+   "sympy/core/tests/test_containers.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.46
+ },
+ "a7101e6dcca6f9dc1e9cbf4d37c4864fc2463edc": {
+  "tests": [
+   "sympy/core/tests/test_containers.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.37
+ },
+ "bb59dae7aba36b43942ff026bb566050e4d00493": {
+  "tests": [
+   "sympy/core/tests/test_containers.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.31
+ },
+ "379722ca5eb697b01b3385b0a284ea4c4cefc1ed": {
+  "tests": [
+   "sympy/core/tests/test_logic.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.21
+ },
+ "f7ec90fedf55ee4c92b1a1a78fe09b9dd3e1b1dd": {
+  "tests": [
+   "sympy/core/tests/test_logic.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.21
+ },
+ "eab233c20b5cf0b5ec6f48eed7c4e06ff80fd97d": {
+  "tests": [
+   "sympy/core/tests/test_logic.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.27
+ },
+ "a3ad8b295a4cbf6ebbad6e42243d351d46d8d14f": {
+  "tests": [
+   "sympy/core/tests/test_logic.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.31
+ },
+ "9296a1bf94f204e10eb6d94fc7411539e30dd5fa": {
+  "tests": [
+   "sympy/core/tests/test_logic.py"
+  ],
+  "home_ok": true,
+  "ci_s": 1.26
+ }
+}

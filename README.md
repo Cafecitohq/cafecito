@@ -53,7 +53,7 @@ never run `git rebase`.
 | [mcp/](mcp/) | MCP server (`reserve` / `submit` / `status` / `sync`) | design |
 | [sdk/](sdk/) | TypeScript / Python client SDKs | design |
 | [gateway/](gateway/) | Git materialization of the landed log | design |
-| [bench/](bench/) | MergeBench — N agents vs. a merge queue, publicly reproducible | design |
+| [bench/](bench/) | MergeBench — a real 33-agent burst: 5.5h serial queue vs **1.37h** cafecito (10-min CI), 93.5 vs 16.2 CI-hours, landed for real with green main | **active** |
 | [PLAN.md](PLAN.md) | Full project plan, roadmap, and competitive analysis | living doc |
 
 ## Run the Phase 0 experiments
