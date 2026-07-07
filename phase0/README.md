@@ -81,32 +81,50 @@ repos are measured.
 
 ### Experiment A (branches merged since 2024-06-01; up to 400 sampled concurrent pairs)
 
+Corpus: 10 repos (run via `run_corpus.py`). Candidates with squash-merge workflows reconstruct
+no branches and are auto-skipped (qutebrowser, salt, xarray fell out this way).
+
 | repo | branches | pairs | symbol-disjoint | file-disjoint | textual conflicts | oracle win | silent risk |
 |---|---|---|---|---|---|---|---|
-| numpy | 397 | 202 | **99.0%** | 98.0% | 0.0% | 1.0% | 1.0% |
-| sympy | 696 | 212 | **93.9%** | 91.0% | 0.0% | 2.8% | 6.1% |
+| astropy | 1208 | 84 | **100.0%** | 100.0% | 0.0% | 0.0% | 0.0% |
 | matplotlib | 994 | 90 | **98.9%** | 95.6% | 0.0% | 3.3% | 1.1% |
+| nova | 60 | 178 | **97.8%** | 95.5% | 0.0% | 2.2% | 2.2% |
+| numpy | 397 | 202 | **99.0%** | 98.0% | 0.0% | 1.0% | 1.0% |
+| pillow | 782 | 253 | **97.6%** | 94.1% | 0.0% | 3.6% | 2.4% |
+| pip | 257 | 81 | **93.8%** | 93.8% | 0.0% | 0.0% | 6.2% |
+| pytest | 40 | 33 | **93.9%** | 84.8% | 0.0% | 9.1% | 6.1% |
 | scipy | 793 | 125 | **100.0%** | 98.4% | 0.0% | 1.6% | 0.0% |
+| statsmodels | 192 | 207 | **97.6%** | 97.6% | 0.0% | 0.0% | 2.4% |
+| sympy | 696 | 212 | **93.9%** | 91.0% | 0.0% | 2.8% | 6.1% |
+| **all** | 5419 | **1465** | **97.4%** | 95.4% | 0.0% | 1.8% | 2.5% |
+
+Smaller/hotter repos show the pattern the thesis predicts: pytest (small, concentrated
+hotspots) has the highest oracle win (9.1% of pairs share a file yet commute at symbol level)
+and, with pip, the highest silent risk (~6%).
 
 Exhaustive conflict scan (every file-sharing concurrent pair, pair-attributed):
-**3 genuine conflicts in 2,990 pairs scanned** (numpy 0/105, sympy 2/1121, matplotlib 1/1393,
-scipy 0/371).
+**5 genuine conflicts in 4,752 pairs scanned** — numpy 0/105, sympy 2/1121, matplotlib 1/1393,
+scipy 0/371, astropy 1/926, nova 0/59, pillow 1/567, pip 0/155, pytest 0/28,
+statsmodels 0/27.
 
 ### Experiment B (all usable attributed conflicts; model: sonnet)
 
 | repo | pairs tried | heuristic PASS (v0) | semantic PASS (tests) | notes |
 |---|---|---|---|---|
 | sympy | 2 | 1 | **2/2** | the heuristic FAIL (rename-PR × logic-fix, 0.5 incorporation) is adjudicated **correct** by tests — the regeneration properly rewrote the fix under the renamed API. In pair 2, THEIRS added 4 new tests; the merged state runs all 173 green, i.e. the union of both sides' acceptance criteria holds |
+| pillow | 1 | 1 | needs build | conflict is itself a test file; semantic validation requires building Pillow's C core per state (a wheel wouldn't contain the branch's C fix) — compiled-repo support is a runner milestone |
 | matplotlib | 0 | — | — | its only conflict is a YAML workflow file (v0 is Python-only) |
+| astropy | 0 | — | — | its only conflict is `tox.ini` (v0 is Python-only) |
 
 ### Findings so far
 
 1. **The commutativity hypothesis survives, with room to spare.** We hypothesized >70%
-   symbol-disjoint; measured 93.9–100%. A merge queue serializes 100% of these pairs.
-2. **Pair-attributable conflicts are vanishingly rare** (~0.1% of even file-sharing concurrent
-   pairs). Most "merge conflicts" developers hit in queues are accumulated mainline drift
-   across many changes — which serialized rebase-retest loops *amplify*, since every landing
-   moves everyone else's base. Parallel landing of commuting changes attacks the cause.
+   symbol-disjoint; measured 93.8–100% across 10 repos and 1,465 pairs (aggregate 97.4%).
+   A merge queue serializes 100% of these pairs.
+2. **Pair-attributable conflicts are vanishingly rare** (5 in 4,752 file-sharing concurrent
+   pairs, ~0.1%). Most "merge conflicts" developers hit in queues are accumulated mainline
+   drift across many changes — which serialized rebase-retest loops *amplify*, since every
+   landing moves everyone else's base. Parallel landing of commuting changes attacks the cause.
 3. **Silent risk is real but small** (0–6.1%): pairs git auto-merges cleanly despite touching
    the same symbol. This is the case for symbol-aware gating over raw textual merges.
 4. **Selection-bias caveat, stated plainly:** these are *human* repos, where maintainers

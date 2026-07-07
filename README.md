@@ -60,6 +60,7 @@ never run `git rebase`.
 
 ```sh
 cd phase0
+python3 run_corpus.py --repos <clones...>                           # A + conflict scan, many repos
 python3 experiment_a.py --repo <path-to-clone> --since 2024-06-01   # commutativity rate
 python3 find_conflicts.py --repo <path-to-clone>                    # attributed conflict corpus
 python3 experiment_b.py --repo <path-to-clone> --max-pairs 5        # regenerative merge
