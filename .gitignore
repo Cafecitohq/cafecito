@@ -1,6 +1,9 @@
 # Phase 0 working data (cloned repos, experiment results)
 phase0/workdir/
 
+# cafecito engine state (this repo dogfoods itself)
+.cafecito/
+
 # Python
 __pycache__/
 *.pyc
