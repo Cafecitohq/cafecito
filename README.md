@@ -75,4 +75,5 @@ for methodology and current numbers.
 
 [Apache-2.0](LICENSE). Contributions require DCO sign-off — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-*"cafecito" is a codename; the coffee is load-bearing.*
+*"cafecito" started as the codename and won the vote to stay. The coffee is load-bearing.*
+*Home: cafecito.sh · org: github.com/cafecitohq (registration in progress)*
