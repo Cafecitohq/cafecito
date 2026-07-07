@@ -1,7 +1,0 @@
-"""cafecito — an integration control plane for AI agent fleets.
-
-Changesets land; collisions commute, regenerate, or escalate; nothing is ever
-"merged" by hand. See https://cafecito.sh and SPEC.md.
-"""
-
-__version__ = "0.1.0"

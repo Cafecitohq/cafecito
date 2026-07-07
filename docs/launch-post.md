@@ -1,6 +1,6 @@
 # 97% of concurrent code changes don't conflict. Your merge queue serializes 100% of them.
 
-*DRAFT — for cafecito.sh and the OSS launch. Numbers as of 2026-07-07; every one of them is
+*DRAFT — for cafeci.to and the OSS launch. Numbers as of 2026-07-07; every one of them is
 reproducible from the repo.*
 
 ---

@@ -250,9 +250,9 @@ Two falsification experiments, both cheap, one of which no competitor has publis
 2. Build the Phase-0 conflict oracle prototype + commutativity measurement harness.
 3. Run it on 2–3 real repos; produce the first commutativity-rate numbers.
 4. Draft MergeBench design.
-5. ~~Name decision + domain/org handles.~~ **Decided 2026-07-06: the name is cafecito.**
-   Availability verified same day — register: cafecito.sh (product, AVAILABLE),
-   cafecitohq.com (company, AVAILABLE), GitHub org `cafecitohq` (free), PyPI + crates
-   `cafecito` (free). npm: package name taken; use `@cafecito` scope if claimable
-   (org-page check was inconclusive) else `cafecito-cli`. cafecito.build available as
-   a defensive backup.
+5. ~~Name decision + domain/org handles.~~ **Decided: the name is cafecito.**
+   Domain strategy (2026-07-07): **cafeci.to for everything**, subdomains per surface
+   (docs., demo., bench., cloud.); no secondary domains. GitHub org: `Cafecitohq`
+   (created 2026-07-07 — plain `cafecito` is squatted by a dormant 2017 org; trademark
+   recovery is a post-launch option). PyPI + crates `cafecito` free as of 2026-07-06;
+   npm package name taken (use scope or `cafecito-cli`).

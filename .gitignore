@@ -18,3 +18,8 @@ target/
 # OS / editor
 .DS_Store
 *.swp
+
+# packaging artifacts
+build/
+dist/
+*.egg-info/
