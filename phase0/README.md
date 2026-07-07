@@ -92,23 +92,44 @@ via `--results workdir/results/agent`.
 Deliberate bias, stated up front: tasks concentrate on hotspot files to measure conflict
 *behavior under contention*, not fleet-wide conflict *rates*.
 
-### First fleet run (sympy @ 2026-07-06 · 8 agents · 2 target files · model: sonnet)
+### Scaled fleet (sympy @ 2026-07-06 · 33 agents across 2 runs · 5 target files · model: sonnet)
 
-| metric | agent corpus | human corpus | read |
+Run 2 (25 agents, 5 hotspots) folded together with run 1 (8 agents) via `--include` — all at
+the same base commit. Two runs assigning near-identical tasks to different agents is kept
+deliberately: redundant assignment is a real fleet pattern, and it produced the most
+instructive conflicts.
+
+| metric | agent corpus (528 pairs) | human corpus (1,465 pairs) | read |
 |---|---|---|---|
-| file-disjoint | **57.1%** | 91–100% | uncoordinated agents pile onto the same files |
-| symbol-disjoint | **96.4%** | 97.4% | …but still mostly touch different symbols — file-level locking would serialize 43% of pairs; the symbol oracle lands 96.4% in parallel |
-| textual conflict | **3.6%** | ~0.1% | ~30× the human conflict density, in line with the selection-bias prediction |
-| silent risk | 3.6% | 2.5% | clean textual merge, same symbol touched |
+| file-disjoint | **80.7%** | 91–100% | uncoordinated agents pile onto shared files (57.1% in the 2-hotspot run) |
+| symbol-disjoint | **97.0%** | 97.4% | …but still mostly touch different symbols; the oracle's parallelism survives contention |
+| textual conflict | **2.7%** (14 pairs) | ~0.1% | ~27× human conflict density, per the selection-bias prediction |
+| silent risk | 1.3% | 2.5% | clean textual merge, same symbol touched |
 
-All 8 agents produced usable changesets. The one textual conflict is *two agents colliding in
-the shared test file* (both extending `test_cache.py`) — test files as fleet hotspots is
-exactly what fleet operators report. Regenerative merge: heuristic 1.0, **semantic PASS** —
-the merged state runs the union of both agents' tests (6) green.
+**Regenerative merge on all 14 conflicts — heuristic vs. semantic (dual test-suite) gate:**
 
-Known validator edge (unhit here, verified by name inspection): two sides defining
-*same-named* test functions would shadow silently in Python; a def-name union check is a
-cheap future hardening.
+| | semantic PASS | semantic FAIL |
+|---|---|---|
+| heuristic PASS | 8 | **2** ← false-accepts caught by tests |
+| heuristic FAIL | **4** ← legitimate rewrites vindicated by tests | 0 |
+
+**Semantic verdict: 12/14 (86%).** Combined with the human corpus (2/2 sympy), regeneration
+dissolves **14 of 16** validatable real conflicts. The line-level heuristic was wrong in both
+directions on 6/14 pairs — the empirical case for the product's safety model: the oracle and
+heuristics only *optimize*; content-addressed verification (tests) is always the landing gate.
+
+The two semantic FAILs are the corpus earning its keep:
+
+1. **A true conflict.** Two agents independently assigned "add `__repr__` to `SympifyError`"
+   chose different repr formats, each with a test asserting its exact output. The acceptance
+   criteria *contradict* — no merge can satisfy both. Regeneration correctly cannot dissolve
+   this; the plane must serialize or supersede (SPEC §5 fallback). The heuristic passed it
+   at 0.75; the semantic gate caught it.
+2. **The shadowing guard fired on its maiden run.** Both agents fixing the same cache bug
+   added a test named `test_sympy_cache_size_bad_value`; the reconciler's merge did not
+   preserve that def name, so the def-union check failed the pair even though the merged
+   file's tests are green. Deliberately strict: acceptance tests must survive *by name* at a
+   landing gate. (A rename-aware matcher could soften this; strict-and-explainable wins v0.)
 
 ## Results — 2026-07-06 (raw JSON in `workdir/results/`)
 

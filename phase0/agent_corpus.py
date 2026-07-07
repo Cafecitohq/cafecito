@@ -202,6 +202,9 @@ def main() -> int:
     ap.add_argument("--agent-timeout", type=int, default=900)
     ap.add_argument("--reuse", action="store_true",
                     help="skip task-gen/fleet phases if state files exist")
+    ap.add_argument("--include", nargs="*", default=[],
+                    help="changesets.json files from earlier runs at the SAME base "
+                         "commit to fold into the analysis (dedup by head sha)")
     args = ap.parse_args()
 
     repo = str(pathlib.Path(args.repo).resolve())
@@ -241,7 +244,12 @@ def main() -> int:
         results.sort(key=lambda r: r["idx"])
         cs_file.write_text(json.dumps(results, indent=1))
         changesets = results
+    for extra in args.include:
+        changesets += json.loads(pathlib.Path(extra).read_text())
     changesets = [c for c in changesets if c.get("head")]
+    seen: set[str] = set()
+    changesets = [c for c in changesets
+                  if not (c["head"] in seen or seen.add(c["head"]))]
     if len(changesets) < 2:
         print("not enough usable changesets", file=sys.stderr)
         return 1

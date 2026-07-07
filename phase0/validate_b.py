@@ -197,8 +197,23 @@ def validate_pair(repo: str, rec: dict, py: pathlib.Path, timeout: int) -> dict:
     root = pathlib.Path(tempfile.mkdtemp(prefix="cafecito-validate-"))
     wt = Worktrees(repo, root)
     try:
+        spliced = spliced_files(repo, rec)
+        # Shadowing guard: a merged Python file must keep the UNION of both
+        # sides' test defs — same-named defs shadow silently and would evade
+        # both pytest and the incorporation heuristic.
+        def test_defs(src: str) -> set[str]:
+            return {l.strip().split("(")[0][4:].strip() for l in src.splitlines()
+                    if l.strip().startswith("def test_")}
+        shadowed: dict[str, list[str]] = {}
+        for path, merged_src in spliced.items():
+            union = (test_defs(show(repo, sim["ours"], path) or "")
+                     | test_defs(show(repo, sim["theirs"], path) or ""))
+            missing = union - test_defs(merged_src)
+            if missing:
+                shadowed[path] = sorted(missing)
+
         merged_dir = wt.add("merged", merged_commit(repo, sim))
-        for path, content in spliced_files(repo, rec).items():
+        for path, content in spliced.items():
             (merged_dir / path).write_text(content)
 
         survivors: dict[str, list[str]] = {}
@@ -220,13 +235,15 @@ def validate_pair(repo: str, rec: dict, py: pathlib.Path, timeout: int) -> dict:
 
         merged_ok = all(r["status"] == "pass" for r in merged_results.values())
         both_signal = bool(survivors["ours"]) and bool(survivors["theirs"])
-        verdict = ("pass" if merged_ok and both_signal else
+        verdict = ("fail" if shadowed else
+                   "pass" if merged_ok and both_signal else
                    "partial" if merged_ok else "fail")
         return {
             "verdict": verdict,
             "home": home_results,
             "survivors": survivors,
             "merged": merged_results,
+            "shadowed_test_defs": shadowed,
         }
     finally:
         wt.cleanup()
