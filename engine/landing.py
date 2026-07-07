@@ -175,7 +175,7 @@ class Engine:
             if code == 0:
                 tree = out.splitlines()[0].strip()
                 candidate = git(self.repo, "commit-tree", tree, "-p", tip,
-                                "-m", f"land: {title[:70]}\n\ncafecito: {cs_id}").strip()
+                                "-m", _land_message(title, cs_id)).strip()
             elif code == 1:
                 conflicted = {p for p in out.splitlines()[1:] if p}
                 intent_in = git(self.repo, "log", "--format=- %B",
@@ -198,8 +198,7 @@ class Engine:
                 regen_files, regen_s = result
                 tree = out.splitlines()[0].strip()
                 candidate = _commit_files(self.repo, tree, tip, regen_files,
-                                          f"land: {title[:70]}\n\ncafecito: {cs_id} "
-                                          f"(regenerated)")
+                                          _land_message(title, cs_id, regenerated=True))
             else:
                 return {"verdict": "rejected", "reason": "merge-tree error"}
 
@@ -228,6 +227,18 @@ class Engine:
             self._append_log(entry)
             return {"verdict": "landed", "id": cs_id, "tip": candidate,
                     "regenerated": regen_s is not None, "gate": gate}
+
+
+def _land_message(title: str, cs_id: str, regenerated: bool = False) -> str:
+    lines = [
+        f"land: {title[:70]}",
+        "",
+        f"Changeset-Id: {cs_id}",
+    ]
+    if regenerated:
+        lines.append("Regenerated: true")
+    lines.append("Signed-off-by: cafecito-engine <engine@cafecito.local>")
+    return "\n".join(lines)
 
 
 def _commit_files(repo: str, tree: str, parent: str, files: dict[str, str],
