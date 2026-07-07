@@ -57,8 +57,8 @@ python3 experiment_b.py --repo workdir/repos/numpy --max-pairs 4 --model sonnet
 **Two validation tiers:**
 
 - *v0 heuristic* (`experiment_b.py`): output parses + ≥60% of each side's added lines
-  incorporated. Cheap, but structurally blind to legitimate rewrites (a merge that correctly
-  renames the other side's code scores low).
+  incorporated. Cheap, but structurally blind to legitimate rewrites (a regeneration that
+  correctly renames the other side's code scores low).
 - *Semantic* (`validate_b.py`): dual test-suite execution. Three states are materialized as
   detached worktrees — OURS (one branch replayed onto the other's base), THEIRS (the other
   head), and MERGED (the attributed merge tree with regenerated regions spliced in). Each
@@ -126,8 +126,8 @@ The two semantic FAILs are the corpus earning its keep:
    this; the plane must serialize or supersede (SPEC §5 fallback). The heuristic passed it
    at 0.75; the semantic gate caught it.
 2. **The shadowing guard fired on its maiden run.** Both agents fixing the same cache bug
-   added a test named `test_sympy_cache_size_bad_value`; the reconciler's merge did not
-   preserve that def name, so the def-union check failed the pair even though the merged
+   added a test named `test_sympy_cache_size_bad_value`; the reconciler's regeneration did
+   not preserve that def name, so the def-union check failed the pair even though the merged
    file's tests are green. Deliberately strict: acceptance tests must survive *by name* at a
    landing gate. (A rename-aware matcher could soften this; strict-and-explainable wins v0.)
 

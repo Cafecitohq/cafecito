@@ -18,6 +18,26 @@ in ([phase0/README.md](phase0/README.md)).
   Tests are facts about states, not rituals; a state whose input closure is unchanged inherits
   its facts.
 
+### 1.1 Vocabulary discipline
+
+Used consistently across cafecito docs and code:
+
+- **land / landing** — the plane's operation: a changeset entering the landed log. Changesets
+  land; nothing "gets merged" by cafecito.
+- **commute** — proven-disjoint changesets land in parallel. Their textual combination is
+  performed by git machinery (`merge-tree`), which is safe here by construction and still
+  passes the verification gate.
+- **regenerate** — colliding regions are re-derived from both intents by a reconciler. The
+  named primitive is **regenerative merge**: the contract is merge-shaped (two inputs, one
+  output honoring both), the mechanism is generation.
+- **escalate** — a landing the gate refuses (contradictory acceptance criteria, unpreserved
+  acceptance tests) goes to humans. Escalation is a success mode: the system identifying what
+  must not land automatically.
+- **merge** — reserved for (a) the git-level textual mechanism (3-way merge, `merge-tree`,
+  merge-base) and (b) the market category being replaced ("merge queue", MergeBench). No
+  cafecito code path resolves a merge conflict; every collision exits via commute,
+  regenerate, or escalate.
+
 ## 2. Changeset
 
 ```jsonc

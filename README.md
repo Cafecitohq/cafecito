@@ -42,6 +42,10 @@ Git stays as the interop boundary — main is always materialized as a normal gi
 humans, CI, and deploy tooling. Agents talk to the control plane through an MCP server and
 never run `git rebase`.
 
+Vocabulary, used strictly throughout: changesets **land**; collisions **commute**,
+**regenerate**, or **escalate**; *merge* is reserved for git's textual mechanism and the
+market category it replaces (see [SPEC.md §1.1](SPEC.md)).
+
 ## Repository layout
 
 | Path | What | Status |
@@ -49,7 +53,7 @@ never run `git rebase`.
 | [phase0/](phase0/) | Falsification experiments A (commutativity rate) and B (regenerative-merge success rate) on real repos | **active** |
 | [SPEC.md](SPEC.md) | Protocol draft: changesets, leases, landed log, MCP surface | draft v0 |
 | [oracle/](oracle/) | Conflict oracle — symbol-level write-set derivation | pending Phase 0 results |
-| [engine/](engine/) | Control plane: intake, merge planner, landed log | design |
+| [engine/](engine/) | Control plane: intake, landing planner, landed log | design |
 | [mcp/](mcp/) | MCP server (`reserve` / `submit` / `status` / `sync`) | design |
 | [sdk/](sdk/) | TypeScript / Python client SDKs | design |
 | [gateway/](gateway/) | Git materialization of the landed log | design |

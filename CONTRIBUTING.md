@@ -21,5 +21,7 @@ deliberate, documented decision (see PLAN.md §5).
 ## Ground rules
 
 - The engine and oracle stay dependency-light. Phase 0 code is Python stdlib only.
-- Every claim about merge behavior needs a reproducible experiment behind it.
+- Every claim about integration behavior needs a reproducible experiment behind it.
+- Vocabulary discipline (SPEC §1.1): changesets *land*; collisions *commute*, *regenerate*,
+  or *escalate*; "merge" is reserved for git's textual mechanism and the market category.
 - Benchmarks are published even when the numbers are unflattering.

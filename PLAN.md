@@ -36,7 +36,7 @@ hundreds of changesets per hour. The serialization point has moved from *writing
 
 ## 2. Thesis
 
-> Coordination should happen at **intent time** (before work is wasted) and merges should be
+> Coordination should happen at **intent time** (before work is wasted) and landings should be
 > ordered by **semantic commutativity** (what actually conflicts), not textual overlap or
 > queue position. CI results should be **memoized facts**, not rituals repeated per rebase.
 
@@ -77,7 +77,7 @@ Consequences for this plan:
 - The merge queue is the **trojan horse**, not the product. The product is the two primitives.
 - Durable moats, in order: (1) **protocol neutrality** — an MCP coordination layer spanning
   Claude/Cursor/Antigravity fleets, a position no agent vendor can take; (2) the **conflict
-  corpus flywheel** — every lease collision, failed speculation, and regenerated merge is
+  corpus flywheel** — every lease collision, failed speculation, and regeneration is
   labeled data about what actually conflicts, compounding oracle accuracy; (3) **publishing
   first** — the regenerative-merge success-rate benchmark names the category.
 
@@ -91,7 +91,7 @@ An open-source **integration control plane** with three surfaces:
   `submit`, `status`. An agent working through Cafecito never sees a merge conflict; it sees
   "your reservation on `auth/session.go:RefreshToken` conflicts with agent-42's lease, ETA 90s"
   *before* it starts work.
-- **Merge planner** — the server that turns a stream of incoming changesets into a
+- **Landing planner** — the server that turns a stream of incoming changesets into a
   commutativity DAG, speculatively builds/tests combinations, and lands independent changes in
   parallel.
 - **Deploy trains** — batched, continuously-departing deploys with automatic bisection: when a
@@ -103,7 +103,7 @@ An open-source **integration control plane** with three surfaces:
 |---|---|---|
 | Conflict oracle | Derives symbol-level read/write sets per changeset (tree-sitter parsing + import graph); decides commutativity | Turns "assume everything conflicts" into "prove independence"; falls back to file-level when analysis is uncertain |
 | Lease service | Short-lived advisory reservations on symbols/paths, taken at intent time | Moves coordination from merge time (late, wasteful) to planning time (early, cheap) |
-| Merge planner | Schedules the changeset DAG; speculatively tests combinations ahead of confirmation (Uber SubmitQueue-style, generalized) | Throughput scales with available CI compute, not CI latency |
+| Landing planner | Schedules the changeset DAG; speculatively tests combinations ahead of confirmation (Uber SubmitQueue-style, generalized) | Throughput scales with available CI compute, not CI latency |
 | Test memoization | Content-addressed test results (Bazel-style hashing of inputs → verdict) | A rebase that doesn't change a test's input closure doesn't rerun it; kills the O(N) rerun tax |
 | Git gateway | Materializes the landed log as a real git branch; ingests human PRs as ordinary changesets | Zero migration for humans, CI, and deploy infra; adoption wedge |
 | Fleet console | Web UI: live DAG, per-agent throughput, contention hotspots, wasted-compute metrics | The dashboard a platform team screenshots into their exec deck |
@@ -124,7 +124,7 @@ disjoint symbols can still interfere behaviorally (shared global state, wire for
  agents ──MCP/SDK──▶ ┌──────────────────────────────────────────┐
                      │  Control plane (Rust)                     │
  humans ──GitHub──▶  │  intake → conflict oracle → lease svc     │
-                     │  → merge planner (speculation DAG)        │
+                     │  → landing planner (speculation DAG)      │
                      │  → landed log (source of truth, append-   │
                      │    only, content-addressed)               │
                      └──────┬──────────────┬─────────────────────┘
@@ -180,7 +180,7 @@ disjoint symbols can still interfere behaviorally (shared global state, wire for
 
 - Baseline: GitHub merge queue → throughput flatlines at ~1/CI-duration; graph of agents
   sitting in rebase-retry loops; CI-minutes burned grows quadratically.
-- Cafecito: near-linear merge throughput until true-conflict density saturates; CI-minutes
+- Cafecito: near-linear landing throughput until true-conflict density saturates; CI-minutes
   per landed change stays flat.
 
 One chart, two lines. That's the launch blog post, the HN demo, and slide 3 of the deck.
@@ -226,7 +226,7 @@ Two falsification experiments, both cheap, one of which no competitor has publis
 
 ## 8. Metrics that matter
 
-- **Merges/hour per repo** at fixed CI latency (the headline).
+- **Landings/hour per repo** at fixed CI latency (the headline).
 - **CI-minutes per landed change** (the COGS/ROI number — converts directly to dollars).
 - **Wasted-work ratio:** agent-hours discarded due to conflicts, before vs. after leases.
 - **Time-to-main:** p50/p95 from changeset submission to landed.
