@@ -29,7 +29,10 @@ is materialized as a normal git branch (`cafecito/main`). Agents never rebase an
 conflict marker. Humans drive it from the shell: `cafecito submit | status | log | advance`.
 Symbol-level write sets for **Python, TypeScript/JavaScript, and Go** (stdlib scanners —
 anything unanalyzable widens safely to file granularity); other languages land at file
-granularity today. **Generated files** (lockfiles etc.) skip merging *and* the reconciler:
+granularity today. **Verification facts:** with `gate_mode: full`, every landing gates on the whole test
+suite — but verdicts are content-addressed by input closure, so only tests the landing
+actually touched execute; the rest inherit facts. **Generated files** (lockfiles etc.)
+skip merging *and* the reconciler:
 declare `cafecito init --generated "package-lock.json=npm install --package-lock-only"` and
 conflicts re-run the generator against the merged sources — in our TypeScript corpus that
 was 58 of 60 real conflicts. Prove it locally: `python3 -m cafecito.tests.smoke`.

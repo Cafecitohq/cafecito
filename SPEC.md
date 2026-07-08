@@ -16,7 +16,7 @@ in ([phase0/README.md](phase0/README.md)).
   of truth. Git branches are a *materialization* of a log position, produced by the gateway.
 - **Verification fact** — a content-addressed record `(input-closure hash, check id) → verdict`.
   Tests are facts about states, not rituals; a state whose input closure is unchanged inherits
-  its facts.
+  its facts. *(Implemented v0.3 for Python: `closure.py` ast import graphs; green-only facts.)*
 
 ### 1.1 Vocabulary discipline
 
