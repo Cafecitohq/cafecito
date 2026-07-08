@@ -131,6 +131,23 @@ The two semantic FAILs are the corpus earning its keep:
    file's tests are green. Deliberately strict: acceptance tests must survive *by name* at a
    landing gate. (A rename-aware matcher could soften this; strict-and-explainable wins v0.)
 
+## Multi-language oracle validation — 2026-07-07 (`experiment_a_multilang.py`)
+
+Same methodology, write sets from the shipped product oracle (`cafecito.writeset`:
+Python `ast` + stdlib span scanners for js/ts/go, landed as cs_3c36a4be38).
+
+| repo | lang | pairs | coverage | symbol-disjoint | textual conflicts |
+|---|---|---|---|---|---|
+| prometheus | Go | 193 | 99.7% | **98.4%** | 0.0% |
+| nest | TS | 341 | 100.0% | 71.0% → **72.7% excl. lockfiles** | 17.6% → **0.0% code** |
+
+The nest anomaly is a finding, not a failure: **58 of 60 conflicting pairs conflict only in
+`package-lock.json`**, and every remaining file overlap is a `package.json` — dependency-bump
+churn. TypeScript *code* had zero conflicts in 341 concurrent pairs. Consequences on the
+roadmap: (a) deterministic regeneration for declared generated files (lockfiles regenerate
+from manifests by running the generator — "regenerate, don't merge", literally); (b)
+JSON-key-level write sets for manifests, so two PRs bumping different dependencies commute.
+
 ## Results — 2026-07-06 (raw JSON in `workdir/results/`)
 
 ### Experiment A (branches merged since 2024-06-01; up to 400 sampled concurrent pairs)

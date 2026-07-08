@@ -27,7 +27,9 @@ committed changeset), `status`. Commuting changesets land immediately; collision
 regenerated from both intents by a reconciler; **every** landing passes a real test gate; main
 is materialized as a normal git branch (`cafecito/main`). Agents never rebase and never see a
 conflict marker. Humans drive it from the shell: `cafecito submit | status | log | advance`.
-Prove it locally: `python3 -m cafecito.tests.smoke`.
+Symbol-level write sets for **Python, TypeScript/JavaScript, and Go** (stdlib scanners —
+anything unanalyzable widens safely to file granularity); other languages land at file
+granularity today. Prove it locally: `python3 -m cafecito.tests.smoke`.
 
 ## The problem
 
