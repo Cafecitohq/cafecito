@@ -38,6 +38,13 @@ def cmd_init(args) -> int:
     if args.require_signal:
         eng.config["require_signal"] = True
         changed = True
+    for spec in args.generated or []:
+        pat, _, cmd = spec.partition("=")
+        if not cmd:
+            print(f"--generated expects PATTERN=COMMAND, got {spec!r}")
+            return 2
+        eng.config.setdefault("generated", {})[pat] = shlex.split(cmd)
+        changed = True
     if changed:
         (eng.state_dir / "config.json").write_text(json.dumps(eng.config, indent=1))
         eng = Engine(args.repo)  # re-read; branch ref follows on next landing
@@ -113,6 +120,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--test-cmd", help='gate command, e.g. "python3 -m pytest -q"')
     p.add_argument("--require-signal", action="store_true",
                    help="refuse landings with no test signal")
+    p.add_argument("--generated", action="append", metavar="PATTERN=COMMAND",
+                   help='deterministic regeneration, e.g. '
+                        '"package-lock.json=npm install --package-lock-only"')
     p.set_defaults(fn=cmd_init)
 
     p = sub.add_parser("serve", help="run the MCP server on stdio")

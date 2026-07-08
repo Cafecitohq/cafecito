@@ -18,10 +18,12 @@ humans, CI, and deploy tooling see ordinary commits. Agents never rebase.
 from __future__ import annotations
 
 import fcntl
+import fnmatch
 import json
 import os
 import pathlib
 import re
+import shlex
 import subprocess
 import tempfile
 import time
@@ -40,6 +42,13 @@ DEFAULT_CONFIG = {
     "lease_ttl_s": 900,
     "gate_timeout_s": 900,
     "require_signal": False,
+    # generated files never get merged OR LLM-regenerated: their generator is
+    # re-run against the merged sources. Map path pattern -> command, e.g.
+    #   "package-lock.json": ["npm", "install", "--package-lock-only"]
+    # The command runs with cwd = the file's directory, inheriting the
+    # environment (generators need caches/registries). Operator opt-in.
+    "generated": {},
+    "generator_timeout_s": 300,
 }
 
 
@@ -190,31 +199,50 @@ class Engine:
                                   "--name-only", "--no-messages",
                                   f"--merge-base={base}", tip, head)
             regen_s, conflicted = None, set()
+            gen_s, gen_map = None, {}
             if code == 0:
                 tree = out.splitlines()[0].strip()
                 candidate = git(self.repo, "commit-tree", tree, "-p", tip,
                                 "-m", _land_message(title, cs_id)).strip()
             elif code == 1:
                 conflicted = {p for p in out.splitlines()[1:] if p}
-                intent_in = git(self.repo, "log", "--format=- %B",
-                                f"{base}..{head}")[:2000]
-                landed_titles = "\n".join(
-                    f"- {e['title']}" for e in self._log_entries(50)
-                    if e["verdict"] == "landed"
-                    and set(e.get("files", [])) & conflicted)
-                result, why = live_regen(
-                    self.repo, base, tip, head, conflicted,
-                    landed_titles, intent_in,
-                    model=self.config["reconciler_model"])
-                if result is None:
-                    entry = {"id": cs_id, "verdict": "escalated", "title": title,
-                             "agent": agent, "head": head, "reason": why,
-                             "conflicted": sorted(conflicted)}
-                    self._append_log(entry)
-                    return {"verdict": "escalated", "id": cs_id, "reason": why,
-                            "conflicted": sorted(conflicted)}
-                regen_files, regen_s = result
+                gen_map = _match_generated(conflicted,
+                                           self.config.get("generated") or {})
+                code_conf = conflicted - set(gen_map)
+                regen_files: dict[str, str] = {}
+                if code_conf:
+                    intent_in = git(self.repo, "log", "--format=- %B",
+                                    f"{base}..{head}")[:2000]
+                    landed_titles = "\n".join(
+                        f"- {e['title']}" for e in self._log_entries(50)
+                        if e["verdict"] == "landed"
+                        and set(e.get("files", [])) & code_conf)
+                    result, why = live_regen(
+                        self.repo, base, tip, head, code_conf,
+                        landed_titles, intent_in,
+                        model=self.config["reconciler_model"])
+                    if result is None:
+                        entry = {"id": cs_id, "verdict": "escalated",
+                                 "title": title, "agent": agent, "head": head,
+                                 "reason": why, "conflicted": sorted(conflicted)}
+                        self._append_log(entry)
+                        return {"verdict": "escalated", "id": cs_id,
+                                "reason": why, "conflicted": sorted(conflicted)}
+                    regen_files, regen_s = result
                 tree = out.splitlines()[0].strip()
+                if gen_map:
+                    gres, why = _run_generators(
+                        self.repo, tree, tip, regen_files, gen_map,
+                        self.config["generator_timeout_s"])
+                    if gres is None:
+                        entry = {"id": cs_id, "verdict": "escalated",
+                                 "title": title, "agent": agent, "head": head,
+                                 "reason": why, "conflicted": sorted(conflicted)}
+                        self._append_log(entry)
+                        return {"verdict": "escalated", "id": cs_id,
+                                "reason": why, "conflicted": sorted(conflicted)}
+                    gen_files, gen_s = gres
+                    regen_files = {**regen_files, **gen_files}
                 candidate = _commit_files(self.repo, tree, tip, regen_files,
                                           _land_message(title, cs_id, regenerated=True))
             else:
@@ -246,6 +274,9 @@ class Engine:
                      "agent": agent, "head": head, "landed": candidate,
                      "files": sorted(files), "symbols": sorted(symbols),
                      "regen_s": regen_s, "gate": gate}
+            if gen_s is not None:
+                entry["gen_s"] = gen_s
+                entry["generated"] = sorted(gen_map)
             self._append_log(entry)
             return {"verdict": "landed", "id": cs_id, "tip": candidate,
                     "regenerated": regen_s is not None, "gate": gate}
@@ -273,6 +304,52 @@ class Engine:
                               "verdict": "advanced", "head": new,
                               "title": f"tip advanced to {new[:12]}"})
             return {"verdict": "advanced", "tip": new}
+
+
+def _match_generated(conflicted: set[str], gen_config: dict) -> dict[str, list[str]]:
+    """Conflicted paths covered by the operator's generated-file config.
+    Patterns fnmatch against the full path and the basename."""
+    out: dict[str, list[str]] = {}
+    for p in sorted(conflicted):
+        for pat, cmd in gen_config.items():
+            if fnmatch.fnmatch(p, pat) or fnmatch.fnmatch(pathlib.Path(p).name, pat):
+                out[p] = cmd if isinstance(cmd, list) else shlex.split(cmd)
+                break
+    return out
+
+
+def _run_generators(repo: str, tree: str, parent: str, seed_files: dict[str, str],
+                    gen_map: dict[str, list[str]], timeout: int):
+    """Deterministic regeneration: materialize the merged state, delete each
+    generated file (its conflicted content is marker garbage), run its
+    generator with cwd = the file's directory, read the result back.
+
+    Returns ({path: content}, seconds) or (None, reason)."""
+    stage = _commit_files(repo, tree, parent, seed_files, "cafecito generator-stage")
+    root = pathlib.Path(tempfile.mkdtemp(prefix="cafecito-gen-"))
+    wt = root / "wt"
+    t0 = time.time()
+    try:
+        git(repo, "worktree", "add", "--detach", "--quiet", str(wt), stage)
+        for path, cmd in sorted(gen_map.items()):
+            target = wt / path
+            target.unlink(missing_ok=True)
+            try:
+                r = subprocess.run(cmd, cwd=target.parent, capture_output=True,
+                                   text=True, timeout=timeout)
+            except subprocess.TimeoutExpired:
+                return None, f"generator timeout for {path}"
+            except OSError as ex:
+                return None, f"generator failed for {path}: {ex}"
+            if r.returncode != 0:
+                return None, (f"generator failed for {path}: "
+                              f"{(r.stderr or r.stdout).strip()[:150]}")
+            if not target.exists():
+                return None, f"generator did not produce {path}"
+        contents = {p: (wt / p).read_text(errors="replace") for p in gen_map}
+        return (contents, round(time.time() - t0, 1)), None
+    finally:
+        git_rc(repo, "worktree", "remove", "--force", str(wt))
 
 
 def _land_message(title: str, cs_id: str, regenerated: bool = False) -> str:
