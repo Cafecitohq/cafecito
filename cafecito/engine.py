@@ -29,7 +29,8 @@ import tempfile
 import time
 import uuid
 
-from .gate import impact_tests, run_gate
+from .facts import FactsStore
+from .gate import _is_test_file, impact_tests, run_gate
 from .gitutil import git, git_rc
 from .regen import live_regen
 from .writeset import write_set
@@ -49,6 +50,11 @@ DEFAULT_CONFIG = {
     # environment (generators need caches/registries). Operator opt-in.
     "generated": {},
     "generator_timeout_s": 300,
+    # gate_mode "impact" runs the changeset's impact tests; "full" runs every
+    # test file in the tree, memoized by input closure — only tests whose
+    # closure the landing touched actually execute (SPEC: verification facts).
+    "gate_mode": "impact",
+    "memoize": True,
 }
 
 
@@ -248,11 +254,19 @@ class Engine:
             else:
                 return {"verdict": "rejected", "reason": "merge-tree error"}
 
-            gate_files = sorted(impact_tests(
-                self.repo, set(files) | conflicted, candidate))
+            if self.config.get("gate_mode") == "full":
+                listing = git(self.repo, "ls-tree", "-r", "--name-only",
+                              candidate).splitlines()
+                gate_files = sorted(p for p in listing if _is_test_file(p)
+                                    and p.endswith(".py"))
+            else:
+                gate_files = sorted(impact_tests(
+                    self.repo, set(files) | conflicted, candidate))
+            facts = FactsStore(self.state_dir) if self.config.get("memoize", True) \
+                else None
             gate = run_gate(self.repo, candidate, gate_files,
                             self.config["test_cmd"],
-                            timeout=self.config["gate_timeout_s"])
+                            timeout=self.config["gate_timeout_s"], facts=facts)
             no_signal_refused = (gate["green"] and gate.get("no_signal")
                                  and self.config.get("require_signal"))
             if not gate["green"] or no_signal_refused:
