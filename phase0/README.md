@@ -139,7 +139,12 @@ Python `ast` + stdlib span scanners for js/ts/go, landed as cs_3c36a4be38).
 | repo | lang | pairs | coverage | symbol-disjoint | textual conflicts |
 |---|---|---|---|---|---|
 | prometheus | Go | 193 | 99.7% | **98.4%** | 0.0% |
-| nest | TS | 341 | 100.0% | 71.0% → **72.7% excl. lockfiles** | 17.6% → **0.0% code** |
+| nest | TS | 341 | 100.0% | 71.0% → **79.8% with JSON-key oracle** (v0.2) | 17.6% → **0.0% code** |
+
+v0.2 follow-up: with JSON key-level write sets, nest's oracle win rose 0.3% → **9.1%**
+(different-dependency bumps in package.json commute) and silent risk fell 11.4% → 2.6%.
+The remaining 17.6% textual conflicts are lockfiles — handled at landing time by
+deterministic regeneration (`generated` config), not by merging.
 
 The nest anomaly is a finding, not a failure: **58 of 60 conflicting pairs conflict only in
 `package-lock.json`**, and every remaining file overlap is a `package.json` — dependency-bump
