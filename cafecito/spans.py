@@ -28,6 +28,7 @@ PREFIX_BY_EXT = {
     ".js": "js", ".jsx": "js", ".mjs": "js", ".cjs": "js",
     ".ts": "ts", ".tsx": "ts", ".mts": "ts", ".cts": "ts",
     ".go": "go",
+    ".json": "json",
 }
 
 LANG_BY_EXT = {
@@ -35,7 +36,10 @@ LANG_BY_EXT = {
     ".js": "js", ".jsx": "js", ".mjs": "js", ".cjs": "js",
     ".ts": "js", ".tsx": "js", ".mts": "js", ".cts": "js",
     ".go": "go",
+    ".json": "json",
 }
+
+MAX_JSON_SPANS = 5000  # huge machine-written files (lockfiles) → file granularity
 
 _JS_DECL = re.compile(
     r"^\s*(?:export\s+)?(?:default\s+)?(?:declare\s+)?(?:abstract\s+)?"
@@ -207,11 +211,70 @@ def go_spans(source: str) -> list[Span] | None:
     return spans
 
 
+_JSON_KEY = re.compile(r'^\s*"((?:[^"\\]|\\.)+)"\s*:')
+
+
+def json_spans(source: str) -> list[Span] | None:
+    """Key-level spans for JSON manifests — two changes bumping DIFFERENT
+    dependencies in package.json commute. Qualified names are dotted key
+    paths ("dependencies.react", "scripts.build", "version").
+
+    Works on conventionally formatted (one key per line) documents — which is
+    what package managers write. Minified documents collapse every span onto
+    one line, which makes everything collide: safely conservative. Invalid
+    JSON or absurdly large documents (lockfiles) return None → file level."""
+    import json as _json
+    try:
+        _json.loads(source)
+    except (ValueError, RecursionError):
+        return None
+    lines = source.splitlines()
+    spans: list[Span] = []
+    open_keys: list = []   # [qualname, start_line, depth_at_key]
+    depth = 0
+    for lineno, raw in enumerate(lines, start=1):
+        m = _JSON_KEY.match(raw)
+        if m and depth >= 1:
+            keydepth = depth
+            while open_keys and open_keys[-1][2] >= keydepth:
+                q, st, _d = open_keys.pop()
+                spans.append((q, st, max(st, lineno - 1)))
+            parent = open_keys[-1][0] if open_keys else ""
+            qual = f"{parent}.{m.group(1)}" if parent else m.group(1)
+            open_keys.append([qual, lineno, keydepth])
+        # structural depth: braces/brackets outside string literals
+        in_str = esc = False
+        for ch in raw:
+            if esc:
+                esc = False
+                continue
+            if ch == "\\":
+                esc = in_str
+                continue
+            if ch == '"':
+                in_str = not in_str
+            elif not in_str and ch in "{[":
+                depth += 1
+            elif not in_str and ch in "}]":
+                depth -= 1
+        while open_keys and depth < open_keys[-1][2]:
+            q, st, _d = open_keys.pop()
+            spans.append((q, st, lineno))
+        if len(spans) > MAX_JSON_SPANS:
+            return None
+    while open_keys:
+        q, st, _d = open_keys.pop()
+        spans.append((q, st, len(lines)))
+    return spans
+
+
 def symbol_spans(source: str, lang: str) -> list[Span] | None:
-    """Spans for `lang` ('js' | 'go'). None = could not analyze (degrade to
-    file granularity). Python uses writeset.python_symbols (ast) instead."""
+    """Spans for `lang` ('js' | 'go' | 'json'). None = could not analyze
+    (degrade to file granularity). Python uses writeset.python_symbols."""
     if lang == "js":
         return js_spans(source)
     if lang == "go":
         return go_spans(source)
+    if lang == "json":
+        return json_spans(source)
     return None
