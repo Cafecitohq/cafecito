@@ -16,6 +16,7 @@ import ast
 import re
 
 from .gitutil import git, show
+from .spans import LANG_BY_EXT, PREFIX_BY_EXT, symbol_spans
 
 HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@")
 
@@ -75,7 +76,12 @@ def python_symbols(source: str) -> list[tuple[str, int, int]]:
 
 
 def _attribute(path: str, ranges: list[Range], symbols: list[tuple[str, int, int]]) -> set[str]:
-    """Map changed line ranges to the innermost enclosing symbol."""
+    """Map changed line ranges to the innermost enclosing symbol (Python)."""
+    return _attribute_lang(path, ranges, symbols, "py")
+
+
+def _attribute_lang(path: str, ranges: list[Range],
+                    symbols: list[tuple[str, int, int]], prefix: str) -> set[str]:
     touched: set[str] = set()
     for lo, hi in ranges:
         best: tuple[int, str] | None = None  # (span_size, qualname) — smallest span wins
@@ -87,9 +93,9 @@ def _attribute(path: str, ranges: list[Range], symbols: list[tuple[str, int, int
                 if best is None or span < best[0]:
                     best = (span, qual)
         if best is not None:
-            touched.add(f"py:{path}::{best[1]}")
+            touched.add(f"{prefix}:{path}::{best[1]}")
         if not hit_any:
-            touched.add(f"py:{path}::<module>")
+            touched.add(f"{prefix}:{path}::<module>")
     return touched
 
 
@@ -99,33 +105,42 @@ def write_set(repo: str, base: str, head: str) -> tuple[frozenset[str], frozense
     files: set[str] = set()
     parsed_cache: dict[tuple[str, str], list | None] = {}
 
-    def syms_at(rev: str, path: str) -> list | None:
+    def syms_at(rev: str, path: str, lang: str) -> list | None:
         key = (rev, path)
         if key not in parsed_cache:
             src = show(repo, rev, path)
             if src is None:
                 parsed_cache[key] = None
-            else:
+            elif lang == "python":
                 try:
                     parsed_cache[key] = python_symbols(src)
                 except (SyntaxError, ValueError, RecursionError):
+                    parsed_cache[key] = None
+            else:
+                try:
+                    parsed_cache[key] = symbol_spans(src, lang)
+                except (ValueError, RecursionError):
                     parsed_cache[key] = None
         return parsed_cache[key]
 
     for path, info in diff_ranges(repo, base, head).items():
         files.add(path)
-        if info["binary"] or not path.endswith(".py"):
+        dot = path.rfind(".")
+        ext = path[dot:] if dot != -1 else ""
+        lang = LANG_BY_EXT.get(ext)
+        if info["binary"] or lang is None:
             symbols.add(f"file:{path}")
             continue
+        prefix = PREFIX_BY_EXT[ext]
         resolved = False
         for rev, side in ((head, "new"), (base, "old")):
             if not info[side]:
                 continue
-            table = syms_at(rev, path)
+            table = syms_at(rev, path, lang)
             if table is None:
-                # deleted/added file on this side, or unparseable → try other side
+                # deleted/added file on this side, or unanalyzable → try other side
                 continue
-            symbols |= _attribute(path, info[side], table)
+            symbols |= _attribute_lang(path, info[side], table, prefix)
             resolved = True
         if not resolved:
             symbols.add(f"file:{path}")

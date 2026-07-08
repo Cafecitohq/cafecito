@@ -15,19 +15,43 @@ import time
 from .gitutil import git, git_rc
 
 
+_CODE_EXTS = (".py", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts",
+              ".cts", ".go")
+
+
+def _is_test_file(p: str) -> bool:
+    name = pathlib.Path(p).name
+    return ("/tests/" in p or "/__tests__/" in p or name.startswith("test_")
+            or name.endswith("_test.go") or ".test." in name or ".spec." in name)
+
+
 def impact_tests(repo: str, paths: set[str], rev: str) -> set[str]:
     """Test files implied by `paths` at `rev`: touched test files themselves,
-    plus the conventional sibling `tests/test_<stem>.py` of each source file."""
+    plus each ecosystem's sibling-test convention —
+    python  pkg/mod.py      → pkg/tests/test_mod.py
+    js/ts   pkg/mod.ts      → pkg/mod.test.ts · pkg/mod.spec.ts ·
+                              pkg/__tests__/mod.test.ts · pkg/__tests__/mod.spec.ts
+    go      pkg/mod.go      → pkg/mod_test.go
+    Only candidates that exist at `rev` are returned."""
     out = set()
     for p in paths:
-        name = pathlib.Path(p).name
-        if "/tests/" in p or name.startswith("test_"):
-            if p.endswith(".py"):
+        pp = pathlib.Path(p)
+        if _is_test_file(p):
+            if pp.suffix in _CODE_EXTS:
                 out.add(p)
             continue
-        t = str(pathlib.Path(p).parent / "tests" / f"test_{pathlib.Path(p).stem}.py")
-        if git_rc(repo, "cat-file", "-e", f"{rev}:{t}")[0] == 0:
-            out.add(t)
+        cands: list[str] = []
+        if pp.suffix == ".py":
+            cands.append(str(pp.parent / "tests" / f"test_{pp.stem}.py"))
+        elif pp.suffix == ".go":
+            cands.append(str(pp.parent / f"{pp.stem}_test.go"))
+        elif pp.suffix in _CODE_EXTS:
+            for marker in ("test", "spec"):
+                cands.append(str(pp.parent / f"{pp.stem}.{marker}{pp.suffix}"))
+                cands.append(str(pp.parent / "__tests__" / f"{pp.stem}.{marker}{pp.suffix}"))
+        for t in cands:
+            if git_rc(repo, "cat-file", "-e", f"{rev}:{t}")[0] == 0:
+                out.add(t)
     return out
 
 
