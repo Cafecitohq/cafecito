@@ -6,6 +6,8 @@
   cafecito status    tip, counts, recent landings, active leases
   cafecito log       the landed log
   cafecito advance   follow out-of-band commits (move tip to a descendant)
+  cafecito swarm     one goal in, a parallel fleet out: plan, build, land
+  cafecito watch     live dashboard of the fleet and the landed log
   cafecito version
 """
 
@@ -100,6 +102,16 @@ def cmd_log(args) -> int:
     return 0
 
 
+def cmd_swarm(args) -> int:
+    from .swarm import run_swarm
+    return run_swarm(args)
+
+
+def cmd_watch(args) -> int:
+    from .watch import run_watch
+    return run_watch(args)
+
+
 def cmd_advance(args) -> int:
     r = _engine(args).advance(args.to)
     print(json.dumps(r, indent=1))
@@ -156,6 +168,21 @@ def main(argv: list[str] | None = None) -> int:
     common(p)
     p.add_argument("--to", default="HEAD")
     p.set_defaults(fn=cmd_advance)
+
+    p = sub.add_parser("swarm", help="plan a goal into tasks, build with a parallel fleet, land")
+    common(p)
+    p.add_argument("goal", help="what the fleet should build")
+    p.add_argument("--agents", type=int, default=3, help="fleet size (default 3)")
+    p.add_argument("--model", default="sonnet", help="worker agent model")
+    p.add_argument("--planner-model", default="sonnet")
+    p.add_argument("--timeout", type=int, default=900, help="per-agent seconds")
+    p.set_defaults(fn=cmd_swarm)
+
+    p = sub.add_parser("watch", help="live fleet dashboard")
+    common(p)
+    p.add_argument("--interval", type=float, default=1.0)
+    p.add_argument("--once", action="store_true", help="print one frame and exit")
+    p.set_defaults(fn=cmd_watch)
 
     p = sub.add_parser("version", help="print version")
     p.set_defaults(fn=lambda a: print(f"cafecito {__version__}") or 0)
