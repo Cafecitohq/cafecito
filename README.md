@@ -21,6 +21,17 @@ cafecito init --repo /path/to/your/repo --test-cmd "python3 -m pytest -q"
 claude mcp add cafecito -- cafecito serve --repo /path/to/your/repo
 ```
 
+**Or skip the wiring and summon the fleet directly:**
+
+```sh
+cafecito swarm "add rate limiting to the API, a retry helper, and tests for both" --agents 3
+cafecito watch        # in another terminal: the live fleet dashboard
+```
+
+`swarm` plans the goal into independent tasks, pre-claims leases, runs the agents in
+parallel, and lands everything through the gate — commuting changes in parallel, collisions
+regenerated, contradictions escalated to you. `watch` shows it happening live.
+
 Any MCP-capable agent then coordinates through four tools: `sync` (get the landed tip or a
 ready worktree), `reserve` (advisory leases on symbols before starting work), `submit` (land a
 committed changeset), `status`. Commuting changesets land immediately; collisions are
