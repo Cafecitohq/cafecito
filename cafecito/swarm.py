@@ -56,9 +56,10 @@ YOUR TASK: {title}
 {brief}
 
 Rules: create or modify ONLY these paths: {paths}. If the task calls for tests,
-they must be deterministic and use only the standard library + pytest. Match
-the existing code style. Do not run tests or any shell commands. When done,
-stop and summarize what you changed in one line.
+they must be deterministic and use the repo's EXISTING test framework and
+conventions (look at neighboring test files). Match the existing code style.
+Do not run tests or any shell commands. When done, stop and summarize what you
+changed in one line.
 """
 
 _JSON_ARRAY = re.compile(r"\[.*\]", re.DOTALL)
