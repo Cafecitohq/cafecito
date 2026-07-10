@@ -56,6 +56,35 @@ optional equipment; the benchmark itself proved it.
 | file locking (Perforce-style) | 9 waves | 3.03 h | 29.7 h |
 | **cafecito** (symbol oracle + regen) | **4 waves** | **1.37 h** | **16.2 h** |
 
+### The speculative-queue baseline (added v0.5.x — the objection, answered)
+
+Speculative queues (Aviator, GitHub merge queue) test candidate states in parallel; a fair
+benchmark must include them. We model one **generously**: `window` candidates build+test
+fully in parallel, conflict discovery is free, bounced changesets resolve offline (zero
+queue wall) and re-enter cured. Real queues are strictly worse than this model.
+
+| speculative window | generations | bounces | wall (10-min CI) | queue CI compute |
+|---|---|---|---|---|
+| W=4 | 17 | 10 | 2.83 h | 12.7 h |
+| W=8 | 13 | 10 | 2.17 h | 18.0 h |
+| W=16 | 11 | 10 | 1.83 h | 29.2 h |
+| W=33 (unlimited) | 11 | 10 | **1.83 h** | **43.3 h** |
+
+Reading it honestly:
+
+- **At agent-fleet conflict density (this corpus: ~27× human), cafecito wins wall-clock even
+  against the unlimited window** (1.37 h vs 1.83 h): each of the 10 conflicts invalidates the
+  speculation behind it and forces another full generation. Speculation's wall is gated by
+  conflicts; cafecito's regeneration dissolves them off the critical path.
+- **The compute trade is the real story:** speculation buys wall with compute — 43.3 CI-h at
+  W=33 versus cafecito's 16.2 (a conservative model that predates v0.3's fact memoization;
+  the shipped product re-verifies less). Every speculative position burns a full suite;
+  every invalidation burns it again.
+- **Where speculation IS competitive:** low-conflict human-velocity repos (~0.1% attributed
+  conflict rate in our 10-repo corpus). If your fleet never collides, an idealized
+  speculative queue approaches cafecito's wall at several times the compute. The regime
+  where cafecito pulls away — contention — is exactly the regime agent fleets create.
+
 ![wall-clock](results/mergebench_wall.svg)
 ![compute](results/mergebench_compute.svg)
 
@@ -76,9 +105,8 @@ Reading the curves (`results/mergebench_*.svg`, data in `results/mergebench.json
   compress to seconds (44s serial vs 140s cafecito) and cafecito's fixed regeneration cost
   dominates — the win grows with CI duration and fleet size, which is exactly the regime the
   product targets.
-- The baseline is a classic serial queue (bors-style). Speculative queues (Aviator, GitHub)
-  improve utilization when nothing conflicts but still serialize semantics and re-run CI on
-  reorders; adding a speculative-queue baseline is future work.
+- ~~Adding a speculative-queue baseline is future work~~ — added, modeled generously,
+  table above. The purple line in the charts is W=8 (GitHub-like).
 - One repo, one fleet, hotspot-biased corpus (by design — see phase0). More repos and larger
   fleets are the next data milestone.
 - Escalation policy is strict (by-name test survival; no retry loop for failed regens). A

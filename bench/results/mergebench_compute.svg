@@ -27,7 +27,10 @@
 <circle cx="624.0" cy="263.5134350036311" r="3.5" fill="#ff9f40"/>
 <polyline points="130.1,349.4 198.2,344.3 266.4,337.2 334.5,328.1 402.6,321.5 470.7,317.4 538.8,312.8 624.0,304.7" fill="none" stroke="#2a9d8f" stroke-width="2.5"/>
 <circle cx="624.0" cy="304.68990559186636" r="3.5" fill="#2a9d8f"/>
+<polyline points="130.1,352.0 198.2,347.9 266.4,340.8 334.5,324.0 402.6,312.3 470.7,310.3 538.8,308.2 624.0,299.1" fill="none" stroke="#7b5ea7" stroke-width="2.5"/>
+<circle cx="624.0" cy="299.0980392156863" r="3.5" fill="#7b5ea7"/>
 <rect x="70" y="52" width="18" height="4" fill="#d62728"/><text x="94" y="58">serial queue</text>
 <rect x="70" y="70" width="18" height="4" fill="#ff9f40"/><text x="94" y="76">file locking</text>
 <rect x="70" y="88" width="18" height="4" fill="#2a9d8f"/><text x="94" y="94">cafecito</text>
+<rect x="70" y="106" width="18" height="4" fill="#7b5ea7"/><text x="94" y="112">speculative queue (W=8)</text>
 </svg>

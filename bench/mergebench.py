@@ -164,6 +164,53 @@ def color_waves(nodes: list[dict], edge) -> list[list[dict]]:
     return waves
 
 
+def schedule_speculative(nodes, pairs, ci, window: int):
+    """An idealized speculative merge queue (Aviator/GitHub-style), modeled
+    GENEROUSLY: `window` candidate states build+test fully in parallel, every
+    candidate runs the FULL suite (that is the semantics being purchased),
+    conflict discovery is free and instant, and a bounced changeset's agent
+    resolves offline (no queue wall time) then re-validates once (compute D)
+    and re-enters cured. Real queues are strictly worse than this model.
+    Returns dict(wall, ci, generations, bounces)."""
+    def conflicts(a, b):
+        return pairs.get(frozenset((a["head"], b["head"])),
+                         {}).get("textual", False)
+
+    queue = list(nodes)
+    landed: list[dict] = []
+    resolved: set[str] = set()
+    wall = compute = 0.0
+    generations = bounces = 0
+    guard = 0
+    while queue and guard < 10_000:
+        guard += 1
+        win = queue[:window]
+        generations += 1
+        wall += max(ci(c) for c in win)          # parallel full-suite builds
+        compute += sum(ci(c) for c in win)
+        bad = None
+        for i, c in enumerate(win):
+            if c["head"] in resolved:
+                continue
+            preds = landed + win[:i]
+            if any(conflicts(c, p) for p in preds):
+                bad = i
+                break
+        if bad is None:
+            landed += win
+            queue = queue[window:]
+            continue
+        landed += win[:bad]
+        culprit = win[bad]
+        bounces += 1
+        resolved.add(culprit["head"])            # agent resolves offline...
+        compute += ci(culprit)                   # ...and re-validates once
+        queue = queue[bad + 1:] if window >= len(queue) else             win[bad + 1:] + queue[window:]
+        queue = queue + [culprit]                # re-enters at the tail
+    return {"wall": wall, "ci": compute, "reval": 0.0,
+            "waves": generations, "regens": bounces}
+
+
 def schedule(nodes, pairs, regens, mode: str, ci):
     """Returns dict(wall, ci_compute, revalidation_compute, waves, regens)."""
     def rel(a, b):
@@ -388,7 +435,7 @@ def svg_chart(series: dict[str, list[tuple[float, float]]], title: str,
     ys = [y for s in series.values() for _, y in s]
     xmax, ymax = max(xs), max(ys) * 1.08
     colors = {"serial queue": "#d62728", "file locking": "#ff9f40",
-              "cafecito": "#2a9d8f"}
+              "cafecito": "#2a9d8f", "speculative queue (W=8)": "#7b5ea7"}
     def X(v): return ML + (W - ML - MR) * v / xmax
     def Y(v): return H - MB - (H - MB - MT) * v / ymax
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" '
@@ -462,6 +509,17 @@ def main() -> int:
             if k == len(fleet):
                 sm = schedule(sub, pairs, regens, mode, measured)
                 table.append((mode, s, sm))
+    # idealized speculative queue: curves at W=8 (GitHub-like), table sweep
+    curves["spec8"] = {"wall": [], "total": []}
+    for k in ks:
+        s = schedule_speculative(fleet[:k], pairs, projected, window=8)
+        curves["spec8"]["wall"].append((k, s["wall"]))
+        curves["spec8"]["total"].append((k, s["ci"]))
+    spec_rows = []
+    for w in (4, 8, 16, len(fleet)):
+        s = schedule_speculative(fleet, pairs, projected, window=w)
+        sm = schedule_speculative(fleet, pairs, measured, window=w)
+        spec_rows.append((w, s, sm))
 
     waves = color_waves(fleet, lambda a, b: pairs.get(
         frozenset((a["head"], b["head"])), {}).get("sym") or pairs.get(
@@ -470,7 +528,7 @@ def main() -> int:
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     names = {"serial": "serial queue", "filelock": "file locking",
-             "cafecito": "cafecito"}
+             "cafecito": "cafecito", "spec8": "speculative queue (W=8)"}
     svg_chart({names[m]: curves[m]["wall"] for m in curves},
               f"Time to land an agent burst (projected {args.ci_minutes:.0f}-min CI)",
               "wall-clock to all-landed", OUT_DIR / "mergebench_wall.svg")
@@ -494,6 +552,11 @@ strategy      waves  regens   wall({args.ci_minutes:.0f}m CI)   wall(measured)  
         print(f"{names[mode]:13} {s['waves']:5} {s['regens']:7} "
               f"{s['wall']/3600:9.2f}h {sm['wall']:13.1f}s "
               f"{(s['ci']+s['reval'])/3600:12.1f}h")
+    print("speculative queue (idealized; generations=waves, bounces=regens):")
+    for w, s, sm in spec_rows:
+        print(f"  W={w:<10} {s['waves']:5} {s['regens']:7} "
+              f"{s['wall']/3600:9.2f}h {sm['wall']:13.1f}s "
+              f"{s['ci']/3600:12.1f}h")
     print(f"""
 escalated: {landing['escalated'] or '—'}
 charts: {OUT_DIR}/mergebench_wall.svg, mergebench_compute.svg
@@ -502,7 +565,9 @@ charts: {OUT_DIR}/mergebench_wall.svg, mergebench_compute.svg
         "fleet": n, "base": base, "ci_minutes": args.ci_minutes,
         "curves": curves, "landing": landing,
         "table": [{"mode": m, "projected": s, "measured": sm}
-                  for m, s, sm in table]}, indent=1))
+                  for m, s, sm in table],
+        "speculative": [{"window": w, "projected": s, "measured": sm}
+                        for w, s, sm in spec_rows]}, indent=1))
     return 0
 
 

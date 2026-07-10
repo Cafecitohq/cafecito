@@ -212,6 +212,76 @@
      58200.0
     ]
    ]
+  },
+  "spec8": {
+   "wall": [
+    [
+     4,
+     600.0
+    ],
+    [
+     8,
+     1200.0
+    ],
+    [
+     12,
+     2400.0
+    ],
+    [
+     16,
+     4200.0
+    ],
+    [
+     20,
+     6000.0
+    ],
+    [
+     24,
+     6000.0
+    ],
+    [
+     28,
+     6600.0
+    ],
+    [
+     33,
+     7800.0
+    ]
+   ],
+   "total": [
+    [
+     4,
+     2400.0
+    ],
+    [
+     8,
+     7200.0
+    ],
+    [
+     12,
+     15600.0
+    ],
+    [
+     16,
+     35400.0
+    ],
+    [
+     20,
+     49200.0
+    ],
+    [
+     24,
+     51600.0
+    ],
+    [
+     28,
+     54000.0
+    ],
+    [
+     33,
+     64800.0
+    ]
+   ]
   }
  },
  "landing": {
@@ -230,15 +300,15 @@
     "shadowed test defs"
    ]
   ],
-  "final_commit": "ecd03919dbc38dad63a6fa3fadb7af12cb6e4c83",
+  "final_commit": "78d1a75455821e0f17e9901f2845b74074713769",
   "green": true,
   "union_tests": 5,
-  "verify_s": 1.73,
+  "verify_s": 1.55,
   "regens": [
    {
     "title": "Add input validation to lazy_function()",
-    "regen_s": 14.9,
-    "gate_s": 1.1,
+    "regen_s": 16.8,
+    "gate_s": 1.14,
     "gate_green": true,
     "files": [
      "sympy/core/tests/test_cache.py"
@@ -246,8 +316,8 @@
    },
    {
     "title": "Validate the `locals` parameter type at the top of sympify",
-    "regen_s": 21.3,
-    "gate_s": 1.28,
+    "regen_s": 17.3,
+    "gate_s": 1.26,
     "gate_green": true,
     "files": [
      "sympy/core/sympify.py",
@@ -256,8 +326,8 @@
    },
    {
     "title": "Deduplicate __doc__ property across LazyFunctionMeta and LazyFunction",
-    "regen_s": 5.8,
-    "gate_s": 2.83,
+    "regen_s": 6.2,
+    "gate_s": 0.97,
     "gate_green": true,
     "files": [
      "sympy/core/cache.py"
@@ -265,8 +335,8 @@
    },
    {
     "title": "Improve _cache.print_cache and clear_cache docstrings",
-    "regen_s": 18.4,
-    "gate_s": 2.35,
+    "regen_s": 17.6,
+    "gate_s": 1.02,
     "gate_green": true,
     "files": [
      "sympy/core/cache.py"
@@ -274,8 +344,8 @@
    },
    {
     "title": "Replace list.pop(0) in AndOr_Base.flatten with collections.deque",
-    "regen_s": 5.4,
-    "gate_s": 1.97,
+    "regen_s": 5.0,
+    "gate_s": 0.99,
     "gate_green": true,
     "files": [
      "sympy/core/logic.py"
@@ -283,8 +353,8 @@
    },
    {
     "title": "Fix whitespace and expand module-level comments for converter dicts",
-    "regen_s": 27.0,
-    "gate_s": 4.64,
+    "regen_s": 16.7,
+    "gate_s": 1.32,
     "gate_green": true,
     "files": [
      "sympy/core/sympify.py"
@@ -292,8 +362,8 @@
    },
    {
     "title": "Extract a _is_fuzzy_true helper and use it in fuzzy_xor",
-    "regen_s": 11.0,
-    "gate_s": 4.37,
+    "regen_s": 5.9,
+    "gate_s": 1.02,
     "gate_green": true,
     "files": [
      "sympy/core/logic.py"
@@ -302,9 +372,9 @@
   ],
   "gates": {
    "runs": 31,
-   "seconds": 50.41
+   "seconds": 34.95000000000001
   },
-  "landing_wall_s": 288.9
+  "landing_wall_s": 177.4
  },
  "table": [
   {
@@ -355,6 +425,76 @@
     "ci": 102.17999999999998,
     "reval": 28.24818181818182,
     "waves": 4,
+    "regens": 10
+   }
+  }
+ ],
+ "speculative": [
+  {
+   "window": 4,
+   "projected": {
+    "wall": 10200.0,
+    "ci": 45600.0,
+    "reval": 0.0,
+    "waves": 17,
+    "regens": 10
+   },
+   "measured": {
+    "wall": 24.41,
+    "ci": 101.47999999999999,
+    "reval": 0.0,
+    "waves": 17,
+    "regens": 10
+   }
+  },
+  {
+   "window": 8,
+   "projected": {
+    "wall": 7800.0,
+    "ci": 64800.0,
+    "reval": 0.0,
+    "waves": 13,
+    "regens": 10
+   },
+   "measured": {
+    "wall": 19.45,
+    "ci": 144.99,
+    "reval": 0.0,
+    "waves": 13,
+    "regens": 10
+   }
+  },
+  {
+   "window": 16,
+   "projected": {
+    "wall": 6600.0,
+    "ci": 105000.0,
+    "reval": 0.0,
+    "waves": 11,
+    "regens": 10
+   },
+   "measured": {
+    "wall": 16.900000000000002,
+    "ci": 234.51000000000002,
+    "reval": 0.0,
+    "waves": 11,
+    "regens": 10
+   }
+  },
+  {
+   "window": 33,
+   "projected": {
+    "wall": 6600.0,
+    "ci": 156000.0,
+    "reval": 0.0,
+    "waves": 11,
+    "regens": 10
+   },
+   "measured": {
+    "wall": 17.380000000000003,
+    "ci": 347.67999999999995,
+    "reval": 0.0,
+    "waves": 11,
     "regens": 10
    }
   }
