@@ -370,6 +370,30 @@ class Engine:
         return {"candidate": candidate, "conflicted": conflicted,
                 "regen_s": regen_s, "gen_s": gen_s, "gen_map": gen_map}
 
+    def advance(self, to: str = "HEAD") -> dict:
+        """Follow out-of-band commits: move the landed tip to a descendant.
+
+        For commits made outside cafecito (maintainer pushes docs to main).
+        The target must contain the current tip; the move is recorded in the
+        landed log."""
+        code, out, _ = git_rc(self.repo, "rev-parse", "--verify", f"{to}^{{commit}}")
+        if code != 0:
+            return {"verdict": "rejected", "reason": f"unknown ref {to!r}"}
+        new = out.strip()
+        with self._lock():
+            tip = self._tip()
+            if new == tip:
+                return {"verdict": "noop", "tip": tip}
+            code, _, _ = git_rc(self.repo, "merge-base", "--is-ancestor", tip, new)
+            if code != 0:
+                return {"verdict": "rejected",
+                        "reason": "target does not contain the landed tip"}
+            self._set_tip(new)
+            self._append_log({"id": f"adv_{uuid.uuid4().hex[:10]}",
+                              "verdict": "advanced", "head": new,
+                              "title": f"tip advanced to {new[:12]}"})
+            return {"verdict": "advanced", "tip": new}
+
     def _inflight(self) -> dict:
         p = self.state_dir / "inflight.json"
         try:
