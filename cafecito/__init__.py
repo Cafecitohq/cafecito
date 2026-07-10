@@ -4,4 +4,4 @@ Changesets land; collisions commute, regenerate, or escalate; nothing is ever
 "merged" by hand. See https://cafeci.to and SPEC.md.
 """
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
