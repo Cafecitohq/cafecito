@@ -7,6 +7,7 @@
   cafecito log       the landed log
   cafecito advance   follow out-of-band commits (move tip to a descendant)
   cafecito swarm     one goal in, a parallel fleet out: plan, build, land
+  cafecito ingest    land open GitHub PRs through the plane (the gateway)
   cafecito watch     live dashboard of the fleet and the landed log
   cafecito version
 """
@@ -107,6 +108,11 @@ def cmd_swarm(args) -> int:
     return run_swarm(args)
 
 
+def cmd_ingest(args) -> int:
+    from .ingest import run_ingest
+    return run_ingest(args)
+
+
 def cmd_watch(args) -> int:
     from .watch import run_watch
     return run_watch(args)
@@ -181,6 +187,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--retries", type=int, default=1,
                    help="retries per failed/escalated task (default 1)")
     p.set_defaults(fn=cmd_swarm)
+
+    p = sub.add_parser("ingest", help="poll open GitHub PRs and land them through the plane")
+    common(p)
+    p.add_argument("--github", help="owner/repo (default: derived from origin)")
+    p.add_argument("--poll", type=int, default=60, help="seconds between polls")
+    p.add_argument("--once", action="store_true", help="one poll cycle, then exit")
+    p.add_argument("--no-report", action="store_true",
+                   help="do not comment/label on GitHub (dry reporting)")
+    p.set_defaults(fn=cmd_ingest)
 
     p = sub.add_parser("watch", help="live fleet dashboard")
     common(p)
