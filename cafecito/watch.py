@@ -75,6 +75,7 @@ def snapshot(repo: str) -> dict:
         "log": [],
         "leases": [],
         "swarm": None,
+        "inflight": [],
         "now": time.time(),
     }
     if not snap["present"]:
@@ -98,6 +99,18 @@ def snapshot(repo: str) -> dict:
     swarm = read_snapshot(state_dir)
     if isinstance(swarm, dict):
         snap["swarm"] = swarm
+
+    # in-flight submissions: registered by the engine's admission control,
+    # gates running concurrently right now (same prune horizon as the engine)
+    infl = _read_json(state_dir / "inflight.json") or {}
+    horizon = snap["now"] - 2 * (cfg.get("gate_timeout_s", 900)
+                                 if isinstance(cfg, dict) else 900)
+    snap["inflight"] = sorted(
+        ({"agent": e.get("agent") or k, "title": e.get("title", ""),
+          "for_s": max(0, round(snap["now"] - e.get("started", 0)))}
+         for k, e in infl.items()
+         if isinstance(e, dict) and e.get("started", 0) > horizon),
+        key=lambda e: -e["for_s"])
 
     return snap
 
@@ -231,6 +244,15 @@ def render(snap: dict, width: int = 100, color: bool = True) -> str:
             lines.append(paint(_clip(head, width), BOLD))
             for aid, a in sorted(swarm["agents"].items()):
                 lines.append(_agent_line(aid, a, width, paint))
+
+    # --- in-flight: gates running concurrently right now -------------------
+    inflight = snap.get("inflight") or []
+    if inflight:
+        lines.append(paint(_clip("GATING NOW", width), BOLD))
+        for e in inflight:
+            row = (f"  ⛩ {e['agent'][:16]:16} "
+                   f"{_trunc(e['title'], width - 32)}  {e['for_s']}s")
+            lines.append(paint(_clip(row, width), CYAN))
 
     # --- leases -----------------------------------------------------------
     leases = snap.get("leases") or []

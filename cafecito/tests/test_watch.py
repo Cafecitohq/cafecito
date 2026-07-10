@@ -123,3 +123,39 @@ def test_color_line_length_ignores_escape_bytes(tmp_path):
                      "\x1b[33m", "\x1b[34m", "\x1b[35m", "\x1b[36m"):
             visible = visible.replace(code, "")
         assert len(visible) <= 80, repr(line)
+
+
+def test_inflight_section_renders(tmp_path):
+    import json
+    import time
+
+    from cafecito.watch import render, snapshot
+
+    state = tmp_path / ".cafecito"
+    state.mkdir()
+    (state / "state.json").write_text(json.dumps({"tip": "a" * 40}))
+    (state / "config.json").write_text(json.dumps({"branch": "cafecito/main"}))
+    (state / "inflight.json").write_text(json.dumps({
+        "cs_live": {"agent": "swarm/receipts", "title": "Create receipts.py",
+                    "symbols": [], "files": [], "started": time.time() - 4},
+        "cs_stale": {"agent": "ghost", "title": "old", "symbols": [],
+                     "files": [], "started": time.time() - 99999},
+    }))
+    snap = snapshot(str(tmp_path))
+    assert [e["agent"] for e in snap["inflight"]] == ["swarm/receipts"]
+    out = render(snap, width=100, color=False)
+    assert "GATING NOW" in out
+    assert "swarm/receipts" in out and "ghost" not in out
+
+
+def test_no_inflight_no_section(tmp_path):
+    import json
+
+    from cafecito.watch import render, snapshot
+
+    state = tmp_path / ".cafecito"
+    state.mkdir()
+    (state / "state.json").write_text(json.dumps({"tip": "b" * 40}))
+    snap = snapshot(str(tmp_path))
+    assert snap["inflight"] == []
+    assert "GATING NOW" not in render(snap, width=100, color=False)
