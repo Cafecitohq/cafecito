@@ -1,5 +1,7 @@
 # cafecito ☕
 
+[![ci](https://github.com/cafecitohq/cafecito/actions/workflows/ci.yml/badge.svg)](https://github.com/cafecitohq/cafecito/actions/workflows/ci.yml)
+
 **An integration control plane for AI agent fleets.**
 *Prove independence when you can. Re-derive when you can't. Never resolve a conflict.*
 

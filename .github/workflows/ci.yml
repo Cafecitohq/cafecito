@@ -1,0 +1,30 @@
+name: ci
+on:
+  push:
+    branches: [main, "cafecito/main"]
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: git identity (the engine's commit-tree needs one)
+        run: |
+          git config --global user.name "ci"
+          git config --global user.email "ci@cafeci.to"
+      - name: install
+        run: |
+          python -m pip -q install -e . pytest
+          cafecito version
+      - name: unit tests (82, no network, no LLM)
+        run: python -m pytest -q -p no:cacheprovider cafecito/tests
+      - name: engine smoke, regeneration leg skipped (no claude CLI in CI)
+        run: python -m cafecito.tests.smoke --no-regen --pytest-python "$(which python)"
