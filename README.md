@@ -44,7 +44,8 @@ ready worktree), `reserve` (advisory leases on symbols before starting work), `s
 committed changeset), `status`. Commuting changesets land immediately; collisions are
 regenerated from both intents by a reconciler; **every** landing passes a real test gate; main
 is materialized as a normal git branch (`cafecito/main`). Agents never rebase and never see a
-conflict marker. Humans drive it from the shell: `cafecito submit | status | log | advance`.
+conflict marker. Humans drive it from the shell: `cafecito submit | status | log | advance` —
+or keep opening ordinary GitHub PRs and let `cafecito ingest` land them through the plane.
 Symbol-level write sets for **Python, TypeScript/JavaScript, and Go** (stdlib scanners —
 anything unanalyzable widens safely to file granularity); other languages land at file
 granularity today. **Verification facts:** with `gate_mode: full`, every landing gates on the whole test
