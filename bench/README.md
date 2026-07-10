@@ -109,5 +109,6 @@ Reading the curves (`results/mergebench_*.svg`, data in `results/mergebench.json
   table above. The purple line in the charts is W=8 (GitHub-like).
 - One repo, one fleet, hotspot-biased corpus (by design — see phase0). More repos and larger
   fleets are the next data milestone.
-- Escalation policy is strict (by-name test survival; no retry loop for failed regens). A
-  production reconciler would retry with more context before escalating.
+- Escalation policy is strict (by-name test survival). ~~No retry loop for failed regens~~ —
+  since v0.8.0 a regenerated candidate that fails the gate earns a fresh reconciler attempt
+  with the gate failure fed back (`regen_retries`, default 1) before escalating.

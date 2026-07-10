@@ -132,7 +132,8 @@ def run_reconciler(prompt: str, model: str, timeout: int = 300) -> str:
 
 
 def live_regen(repo: str, base: str, tip: str, head: str, conflicted: set[str],
-               intent_landed: str, intent_incoming: str, model: str = "sonnet"):
+               intent_landed: str, intent_incoming: str, model: str = "sonnet",
+               feedback: str = ""):
     """Regenerate colliding regions of `head` against the landed `tip`.
 
     Returns ({path: merged content}, seconds) or (None, reason). Includes the
@@ -165,6 +166,11 @@ def live_regen(repo: str, base: str, tip: str, head: str, conflicted: set[str],
         return None, "no regenerable regions"
     prompt = PROMPT_HEADER.format(intent_a=intent_landed or "- accumulated mainline",
                                   intent_b=intent_incoming) + "".join(sections)
+    if feedback:
+        prompt += (f"\n\nA PREVIOUS REGENERATION OF THESE REGIONS FAILED THE "
+                   f"LANDING GATE:\n{feedback}\n"
+                   "Produce corrected regions that make those tests pass while "
+                   "still implementing BOTH change sets' intents.")
     if len(prompt) > MAX_PROMPT:
         return None, "prompt too large"
     t0 = time.time()

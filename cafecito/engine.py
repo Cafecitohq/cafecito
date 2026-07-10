@@ -55,6 +55,10 @@ DEFAULT_CONFIG = {
     # closure the landing touched actually execute (SPEC: verification facts).
     "gate_mode": "impact",
     "memoize": True,
+    # a REGENERATED candidate that fails the gate gets this many fresh
+    # reconciler attempts with the gate failure fed back (deterministic
+    # generator output never retries — same inputs, same result)
+    "regen_retries": 1,
 }
 
 
@@ -243,11 +247,16 @@ class Engine:
         wave parallelism. If a commuting landing advanced the tip while we
         gated, rebase and re-gate: memoized facts make the re-gate near-free
         (untouched closures inherit)."""
+        feedback = ""
+        regen_attempts = 0
         for attempt in range(10):
-            built = self._build_candidate(cs_id, head, agent, title, tip, base)
+            built = self._build_candidate(cs_id, head, agent, title, tip, base,
+                                          feedback=feedback)
             if "verdict" in built:
                 return built
             candidate, conflicted = built["candidate"], built["conflicted"]
+            if built["regen_s"] is not None:
+                regen_attempts += 1
 
             if self.config.get("gate_mode") == "full":
                 listing = git(self.repo, "ls-tree", "-r", "--name-only",
@@ -265,14 +274,22 @@ class Engine:
             no_signal_refused = (gate["green"] and gate.get("no_signal")
                                  and self.config.get("require_signal"))
             if not gate["green"] or no_signal_refused:
+                # a regenerated candidate earns fresh reconciler attempts with
+                # the gate failure fed back, before anyone gets escalated to
+                if (not no_signal_refused and built["regen_s"] is not None
+                        and regen_attempts <= self.config.get("regen_retries", 1)):
+                    feedback = gate.get("summary", "")[:400]
+                    continue
                 reason = ("no test signal (require_signal)" if no_signal_refused
                           else "failed landing gate")
                 entry = {"id": cs_id, "verdict": "escalated", "title": title,
                          "agent": agent, "head": head,
-                         "reason": reason, "gate": gate}
+                         "reason": reason, "gate": gate,
+                         "regen_attempts": regen_attempts or None}
                 self._append_log(entry)
                 return {"verdict": "escalated", "id": cs_id,
                         "reason": reason, "gate": gate}
+            feedback = ""
 
             with self._lock():
                 if self._tip() == tip:
@@ -285,6 +302,8 @@ class Engine:
                              "agent": agent, "head": head, "landed": candidate,
                              "files": sorted(files), "symbols": sorted(symbols),
                              "regen_s": built["regen_s"], "gate": gate}
+                    if regen_attempts > 1:
+                        entry["regen_attempts"] = regen_attempts
                     if attempt:
                         entry["raced"] = attempt
                     if built["gen_s"] is not None:
@@ -310,7 +329,8 @@ class Engine:
         return {"verdict": "escalated", "id": cs_id,
                 "reason": "landing raced 10 times; resubmit"}
 
-    def _build_candidate(self, cs_id, head, agent, title, tip, base) -> dict:
+    def _build_candidate(self, cs_id, head, agent, title, tip, base,
+                         feedback: str = "") -> dict:
         """Candidate commit for tip+head: clean merge, or split conflict into
         generated (deterministic regeneration) and code (reconciler) paths.
         Returns build info, or a verdict dict on escalation/rejection."""
@@ -339,7 +359,7 @@ class Engine:
                 result, why = live_regen(
                     self.repo, base, tip, head, code_conf,
                     landed_titles, intent_in,
-                    model=self.config["reconciler_model"])
+                    model=self.config["reconciler_model"], feedback=feedback)
                 if result is None:
                     entry = {"id": cs_id, "verdict": "escalated",
                              "title": title, "agent": agent, "head": head,
