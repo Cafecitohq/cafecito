@@ -5,9 +5,11 @@
 **An integration control plane for AI agent fleets.**
 *Prove independence when you can. Re-derive when you can't. Never resolve a conflict.*
 
-> **Status: v0.1 — usable on your laptop.** The physics is validated ([phase0/](phase0/),
-> [bench/](bench/)); the landing engine and MCP server now run for real. Not yet: multi-repo,
-> GitHub App, hosted anything. Expect sharp edges.
+> **Status: v0.8 — a working single-repo control plane.** The physics is validated
+> ([phase0/](phase0/), [bench/](bench/)); the engine, MCP server, fleet (`swarm`/`watch`),
+> PR gateway (`ingest`), memoized gates, and wave-parallel landing all run for real — and
+> every feature since v0.1 [landed through cafecito itself](docs/building-itself.md).
+> Not yet: multi-repo, webhooks/hosted App, containers. Sharp edges remain.
 
 ![Three agents land in parallel: two commute, one collision is regenerated live, main ends green](examples/demo.gif)
 
@@ -15,7 +17,7 @@
 parallel, the third collides and is regenerated from both intents by a live reconciler call —
 gated, trailer-stamped, main green. Run it yourself: [`examples/demo.sh`](examples/demo.sh).*
 
-## Quickstart (v0.1)
+## Quickstart
 
 ```sh
 pipx install git+https://github.com/cafecitohq/cafecito   # or: pip install . from a clone
@@ -104,10 +106,10 @@ market category it replaces (see [SPEC.md §1.1](SPEC.md)).
 | Path | What | Status |
 |---|---|---|
 | [phase0/](phase0/) | Falsification experiments A (commutativity rate) and B (regenerative-merge success rate) on real repos | **active** |
-| [SPEC.md](SPEC.md) | Protocol draft: changesets, leases, landed log, MCP surface | draft v0 |
-| [cafecito/](cafecito/) | The product: oracle write sets, landing engine (merge/regenerate/gate/landed log), MCP server, CLI — `pip install`able, zero dependencies | **v0.1** |
+| [SPEC.md](SPEC.md) | Protocol: changesets, leases, landed log, verification facts, MCP surface | v0 — all surfaces implemented |
+| [cafecito/](cafecito/) | The product: oracle (py/ts/js/go/json write sets), engine (commute/regenerate/escalate, memoized gates, wave-parallel admission), MCP server, `swarm`/`watch`/`ingest`, CLI — `pip install`able, zero dependencies | **v0.8** |
 | [sdk/](sdk/) | TypeScript / Python client SDKs | design |
-| [gateway/](gateway/) | Full git gateway (v0.1 materializes a branch + `advance` ingestion; PR ingestion pending) | design |
+| [gateway/](gateway/) | Git gateway: materialized branch, `advance`, and PR ingestion (`cafecito ingest`, [proven on PR #1](https://github.com/Cafecitohq/cafecito/pull/1)); webhooks/hosted App pending | **shipped in cafecito/** |
 | [bench/](bench/) | MergeBench — a real 33-agent burst: 5.5h serial queue vs **1.37h** cafecito (10-min CI), 93.5 vs 16.2 CI-hours, landed for real with green main | **active** |
 | [PLAN.md](PLAN.md) | Full project plan, roadmap, and competitive analysis | living doc |
 
@@ -123,7 +125,7 @@ python3 validate_b.py --repo <path-to-clone>                        # dual test-
 python3 agent_corpus.py --repo <clone> --targets <files...>         # uncoordinated-fleet corpus
 ```
 
-Python 3.11+ and git ≥ 2.38. Stdlib only — no dependencies. See [phase0/README.md](phase0/README.md)
+Python 3.10+ and git ≥ 2.38. Stdlib only — no dependencies. See [phase0/README.md](phase0/README.md)
 for methodology and current numbers.
 
 ## License
