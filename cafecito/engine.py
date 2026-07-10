@@ -182,6 +182,9 @@ class Engine:
                         ("id", "verdict", "title", "reason", "gate", "regen_s")}
                        for e in reversed(entries)],
             "active_leases": self._leases(),
+            "inflight": [{"agent": e.get("agent"), "title": e.get("title"),
+                          "for_s": round(time.time() - e.get("started", 0))}
+                         for e in self._inflight().values()],
         }
 
     def submit(self, ref: str, agent: str = "", title: str = "") -> dict:
@@ -190,69 +193,61 @@ class Engine:
             return {"verdict": "rejected", "reason": f"unknown ref {ref!r}"}
         head = out.strip()
         cs_id = f"cs_{uuid.uuid4().hex[:10]}"
-        with self._lock():
-            tip = self._tip()
-            code, base, _ = git_rc(self.repo, "merge-base", tip, head)
-            if code != 0:
-                return {"verdict": "rejected", "reason": "no common history with tip"}
-            base = base.strip()
-            if base == head:
-                return {"verdict": "rejected", "reason": "changeset already in tip"}
-            title = title or git(self.repo, "log", "-1", "--format=%s", head).strip()
-            symbols, files = write_set(self.repo, base, head)
 
-            code, out, _ = git_rc(self.repo, "merge-tree", "--write-tree",
-                                  "--name-only", "--no-messages",
-                                  f"--merge-base={base}", tip, head)
-            regen_s, conflicted = None, set()
-            gen_s, gen_map = None, {}
-            if code == 0:
-                tree = out.splitlines()[0].strip()
-                candidate = git(self.repo, "commit-tree", tree, "-p", tip,
-                                "-m", _land_message(title, cs_id)).strip()
-            elif code == 1:
-                conflicted = {p for p in out.splitlines()[1:] if p}
-                gen_map = _match_generated(conflicted,
-                                           self.config.get("generated") or {})
-                code_conf = conflicted - set(gen_map)
-                regen_files: dict[str, str] = {}
-                if code_conf:
-                    intent_in = git(self.repo, "log", "--format=- %B",
-                                    f"{base}..{head}")[:2000]
-                    landed_titles = "\n".join(
-                        f"- {e['title']}" for e in self._log_entries(50)
-                        if e["verdict"] == "landed"
-                        and set(e.get("files", [])) & code_conf)
-                    result, why = live_regen(
-                        self.repo, base, tip, head, code_conf,
-                        landed_titles, intent_in,
-                        model=self.config["reconciler_model"])
-                    if result is None:
-                        entry = {"id": cs_id, "verdict": "escalated",
-                                 "title": title, "agent": agent, "head": head,
-                                 "reason": why, "conflicted": sorted(conflicted)}
-                        self._append_log(entry)
-                        return {"verdict": "escalated", "id": cs_id,
-                                "reason": why, "conflicted": sorted(conflicted)}
-                    regen_files, regen_s = result
-                tree = out.splitlines()[0].strip()
-                if gen_map:
-                    gres, why = _run_generators(
-                        self.repo, tree, tip, regen_files, gen_map,
-                        self.config["generator_timeout_s"])
-                    if gres is None:
-                        entry = {"id": cs_id, "verdict": "escalated",
-                                 "title": title, "agent": agent, "head": head,
-                                 "reason": why, "conflicted": sorted(conflicted)}
-                        self._append_log(entry)
-                        return {"verdict": "escalated", "id": cs_id,
-                                "reason": why, "conflicted": sorted(conflicted)}
-                    gen_files, gen_s = gres
-                    regen_files = {**regen_files, **gen_files}
-                candidate = _commit_files(self.repo, tree, tip, regen_files,
-                                          _land_message(title, cs_id, regenerated=True))
-            else:
-                return {"verdict": "rejected", "reason": "merge-tree error"}
+        # ---- admission: wait until our write set is disjoint from every
+        # in-flight submission, then register. Commuting submissions pass
+        # straight through and gate CONCURRENTLY; colliders queue here. ----
+        deadline = time.time() + self.config["gate_timeout_s"] * 2
+        clash: list[str] = []
+        while True:
+            with self._lock():
+                tip = self._tip()
+                code, base, _ = git_rc(self.repo, "merge-base", tip, head)
+                if code != 0:
+                    return {"verdict": "rejected",
+                            "reason": "no common history with tip"}
+                base = base.strip()
+                if base == head:
+                    return {"verdict": "rejected",
+                            "reason": "changeset already in tip"}
+                title = title or git(self.repo, "log", "-1", "--format=%s",
+                                     head).strip()
+                symbols, files = write_set(self.repo, base, head)
+                infl = self._inflight()
+                clash = sorted({e.get("agent") or k for k, e in infl.items()
+                                if set(e["symbols"]) & set(symbols)
+                                or set(e["files"]) & set(files)})
+                if not clash:
+                    infl[cs_id] = {"symbols": sorted(symbols),
+                                   "files": sorted(files), "agent": agent,
+                                   "title": title, "started": time.time()}
+                    self._save_inflight(infl)
+                    break
+            if time.time() > deadline:
+                return {"verdict": "rejected",
+                        "reason": f"admission timeout behind {', '.join(clash)}"}
+            time.sleep(0.3)
+
+        try:
+            return self._build_gate_land(cs_id, head, agent, title, tip, base,
+                                         symbols, files)
+        finally:
+            with self._lock():
+                infl = self._inflight()
+                if infl.pop(cs_id, None) is not None:
+                    self._save_inflight(infl)
+
+    def _build_gate_land(self, cs_id, head, agent, title, tip, base,
+                         symbols, files) -> dict:
+        """Build the candidate and gate it with the lock RELEASED — this is
+        wave parallelism. If a commuting landing advanced the tip while we
+        gated, rebase and re-gate: memoized facts make the re-gate near-free
+        (untouched closures inherit)."""
+        for attempt in range(10):
+            built = self._build_candidate(cs_id, head, agent, title, tip, base)
+            if "verdict" in built:
+                return built
+            candidate, conflicted = built["candidate"], built["conflicted"]
 
             if self.config.get("gate_mode") == "full":
                 listing = git(self.repo, "ls-tree", "-r", "--name-only",
@@ -279,45 +274,116 @@ class Engine:
                 return {"verdict": "escalated", "id": cs_id,
                         "reason": reason, "gate": gate}
 
-            self._set_tip(candidate)
-            if agent:  # landing releases the agent's leases
-                leases = {k: v for k, v in self._leases().items()
-                          if v["agent"] != agent}
-                self._save_leases(leases)
-            entry = {"id": cs_id, "verdict": "landed", "title": title,
-                     "agent": agent, "head": head, "landed": candidate,
-                     "files": sorted(files), "symbols": sorted(symbols),
-                     "regen_s": regen_s, "gate": gate}
-            if gen_s is not None:
-                entry["gen_s"] = gen_s
-                entry["generated"] = sorted(gen_map)
-            self._append_log(entry)
-            return {"verdict": "landed", "id": cs_id, "tip": candidate,
-                    "regenerated": regen_s is not None, "gate": gate}
-
-    def advance(self, to: str = "HEAD") -> dict:
-        """Follow out-of-band commits: move the landed tip to a descendant.
-
-        For commits made outside cafecito (maintainer pushes docs to main).
-        The target must contain the current tip; the move is recorded in the
-        landed log. Dogfood finding #4."""
-        code, out, _ = git_rc(self.repo, "rev-parse", "--verify", f"{to}^{{commit}}")
-        if code != 0:
-            return {"verdict": "rejected", "reason": f"unknown ref {to!r}"}
-        new = out.strip()
-        with self._lock():
-            tip = self._tip()
-            if new == tip:
-                return {"verdict": "noop", "tip": tip}
-            code, _, _ = git_rc(self.repo, "merge-base", "--is-ancestor", tip, new)
+            with self._lock():
+                if self._tip() == tip:
+                    self._set_tip(candidate)
+                    if agent:  # landing releases the agent's leases
+                        leases = {k: v for k, v in self._leases().items()
+                                  if v["agent"] != agent}
+                        self._save_leases(leases)
+                    entry = {"id": cs_id, "verdict": "landed", "title": title,
+                             "agent": agent, "head": head, "landed": candidate,
+                             "files": sorted(files), "symbols": sorted(symbols),
+                             "regen_s": built["regen_s"], "gate": gate}
+                    if attempt:
+                        entry["raced"] = attempt
+                    if built["gen_s"] is not None:
+                        entry["gen_s"] = built["gen_s"]
+                        entry["generated"] = sorted(built["gen_map"])
+                    self._append_log(entry)
+                    return {"verdict": "landed", "id": cs_id, "tip": candidate,
+                            "regenerated": built["regen_s"] is not None,
+                            "gate": gate}
+                tip = self._tip()
+            # tip moved while we gated: rebase against it and go again
+            code, nb, _ = git_rc(self.repo, "merge-base", tip, head)
             if code != 0:
                 return {"verdict": "rejected",
-                        "reason": "target does not contain the landed tip"}
-            self._set_tip(new)
-            self._append_log({"id": f"adv_{uuid.uuid4().hex[:10]}",
-                              "verdict": "advanced", "head": new,
-                              "title": f"tip advanced to {new[:12]}"})
-            return {"verdict": "advanced", "tip": new}
+                        "reason": "no common history with tip"}
+            base = nb.strip()
+            symbols, files = write_set(self.repo, base, head)
+
+        entry = {"id": cs_id, "verdict": "escalated", "title": title,
+                 "agent": agent, "head": head,
+                 "reason": "landing raced 10 times; resubmit"}
+        self._append_log(entry)
+        return {"verdict": "escalated", "id": cs_id,
+                "reason": "landing raced 10 times; resubmit"}
+
+    def _build_candidate(self, cs_id, head, agent, title, tip, base) -> dict:
+        """Candidate commit for tip+head: clean merge, or split conflict into
+        generated (deterministic regeneration) and code (reconciler) paths.
+        Returns build info, or a verdict dict on escalation/rejection."""
+        code, out, _ = git_rc(self.repo, "merge-tree", "--write-tree",
+                              "--name-only", "--no-messages",
+                              f"--merge-base={base}", tip, head)
+        regen_s, conflicted = None, set()
+        gen_s, gen_map = None, {}
+        if code == 0:
+            tree = out.splitlines()[0].strip()
+            candidate = git(self.repo, "commit-tree", tree, "-p", tip,
+                            "-m", _land_message(title, cs_id)).strip()
+        elif code == 1:
+            conflicted = {p for p in out.splitlines()[1:] if p}
+            gen_map = _match_generated(conflicted,
+                                       self.config.get("generated") or {})
+            code_conf = conflicted - set(gen_map)
+            regen_files: dict[str, str] = {}
+            if code_conf:
+                intent_in = git(self.repo, "log", "--format=- %B",
+                                f"{base}..{head}")[:2000]
+                landed_titles = "\n".join(
+                    f"- {e['title']}" for e in self._log_entries(50)
+                    if e["verdict"] == "landed"
+                    and set(e.get("files", [])) & code_conf)
+                result, why = live_regen(
+                    self.repo, base, tip, head, code_conf,
+                    landed_titles, intent_in,
+                    model=self.config["reconciler_model"])
+                if result is None:
+                    entry = {"id": cs_id, "verdict": "escalated",
+                             "title": title, "agent": agent, "head": head,
+                             "reason": why, "conflicted": sorted(conflicted)}
+                    self._append_log(entry)
+                    return {"verdict": "escalated", "id": cs_id,
+                            "reason": why, "conflicted": sorted(conflicted)}
+                regen_files, regen_s = result
+            tree = out.splitlines()[0].strip()
+            if gen_map:
+                gres, why = _run_generators(
+                    self.repo, tree, tip, regen_files, gen_map,
+                    self.config["generator_timeout_s"])
+                if gres is None:
+                    entry = {"id": cs_id, "verdict": "escalated",
+                             "title": title, "agent": agent, "head": head,
+                             "reason": why, "conflicted": sorted(conflicted)}
+                    self._append_log(entry)
+                    return {"verdict": "escalated", "id": cs_id,
+                            "reason": why, "conflicted": sorted(conflicted)}
+                gen_files, gen_s = gres
+                regen_files = {**regen_files, **gen_files}
+            candidate = _commit_files(self.repo, tree, tip, regen_files,
+                                      _land_message(title, cs_id,
+                                                    regenerated=True))
+        else:
+            return {"verdict": "rejected", "reason": "merge-tree error"}
+        return {"candidate": candidate, "conflicted": conflicted,
+                "regen_s": regen_s, "gen_s": gen_s, "gen_map": gen_map}
+
+    def _inflight(self) -> dict:
+        p = self.state_dir / "inflight.json"
+        try:
+            d = json.loads(p.read_text())
+        except (OSError, ValueError):
+            d = {}
+        horizon = time.time() - self.config["gate_timeout_s"] * 2
+        return {k: v for k, v in d.items() if v.get("started", 0) > horizon}
+
+    def _save_inflight(self, d: dict) -> None:
+        p = self.state_dir / "inflight.json"
+        tmp = p.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(d, indent=1))
+        os.replace(tmp, p)
 
 
 def _match_generated(conflicted: set[str], gen_config: dict) -> dict[str, list[str]]:

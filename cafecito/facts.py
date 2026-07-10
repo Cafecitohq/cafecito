@@ -7,14 +7,16 @@ with identical closure content share facts regardless of history.
 
 Only GREEN verdicts are recorded: a red must re-run every time (flakes and
 fixes both deserve fresh evidence). The store lives in the engine state dir
-and is trimmed FIFO; callers hold the engine lock during submit, so no extra
-locking here.
+and is trimmed FIFO. Since v0.5 gates run concurrently: writes go through an
+atomic replace, and a lost update between racers is acceptable — facts are an
+optimization, never correctness.
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
+import os
 import pathlib
 import time
 
@@ -45,4 +47,6 @@ class FactsStore:
             oldest = sorted(self._facts, key=lambda k: self._facts[k]["at"])
             for k in oldest[: len(self._facts) - MAX_FACTS]:
                 del self._facts[k]
-        self.path.write_text(json.dumps(self._facts))
+        tmp = self.path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(self._facts))
+        os.replace(tmp, self.path)
