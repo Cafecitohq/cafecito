@@ -39,6 +39,10 @@ regenerated, contradictions escalated to you. `watch` shows it happening live:
 *(Real recording: one sentence → three agents → three gated landings → green main, 31s.
 Reproduce it: `python3 examples/demo_swarm.py`.)*
 
+Since v0.1, **every feature of cafecito has been landed through cafecito** — the story
+(including the release we broke and what it taught us) is in
+[docs/building-itself.md](docs/building-itself.md).
+
 Any MCP-capable agent then coordinates through four tools: `sync` (get the landed tip or a
 ready worktree), `reserve` (advisory leases on symbols before starting work), `submit` (land a
 committed changeset), `status`. Commuting changesets land immediately; collisions are
