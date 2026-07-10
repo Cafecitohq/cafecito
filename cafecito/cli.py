@@ -9,6 +9,8 @@
   cafecito swarm     one goal in, a parallel fleet out: plan, build, land
   cafecito ingest    land open GitHub PRs through the plane (the gateway)
   cafecito watch     live dashboard of the fleet and the landed log
+  cafecito doctor    environment + control-plane health checks
+  cafecito gc        clean stale worktrees, leases, in-flight entries
   cafecito version
 """
 
@@ -118,6 +120,16 @@ def cmd_watch(args) -> int:
     return run_watch(args)
 
 
+def cmd_doctor(args) -> int:
+    from .doctor import run_doctor
+    return run_doctor(args)
+
+
+def cmd_gc(args) -> int:
+    from .doctor import run_gc
+    return run_gc(args)
+
+
 def cmd_advance(args) -> int:
     r = _engine(args).advance(args.to)
     print(json.dumps(r, indent=1))
@@ -202,6 +214,14 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--interval", type=float, default=1.0)
     p.add_argument("--once", action="store_true", help="print one frame and exit")
     p.set_defaults(fn=cmd_watch)
+
+    p = sub.add_parser("doctor", help="environment + control-plane health checks")
+    common(p)
+    p.set_defaults(fn=cmd_doctor)
+
+    p = sub.add_parser("gc", help="clean stale worktrees, expired leases, dead inflight")
+    common(p)
+    p.set_defaults(fn=cmd_gc)
 
     p = sub.add_parser("version", help="print version")
     p.set_defaults(fn=lambda a: print(f"cafecito {__version__}") or 0)
