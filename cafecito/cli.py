@@ -176,6 +176,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--model", default="sonnet", help="worker agent model")
     p.add_argument("--planner-model", default="sonnet")
     p.add_argument("--timeout", type=int, default=900, help="per-agent seconds")
+    p.add_argument("--dry-run", action="store_true",
+                   help="plan and print tasks, execute nothing")
+    p.add_argument("--retries", type=int, default=1,
+                   help="retries per failed/escalated task (default 1)")
     p.set_defaults(fn=cmd_swarm)
 
     p = sub.add_parser("watch", help="live fleet dashboard")

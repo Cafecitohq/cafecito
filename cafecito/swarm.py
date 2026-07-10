@@ -122,6 +122,22 @@ def plan_tasks(goal: str, listing: str, agents: int, call) -> list[dict]:
     return tasks
 
 
+def _run_worker(prompt: str, model: str, timeout: int, cwd: str):
+    """The worker-agent seam (monkeypatchable in tests)."""
+    return subprocess.run(
+        ["claude", "-p", prompt, "--model", model,
+         "--permission-mode", "acceptEdits",
+         "--allowedTools", "Edit,Write,Read,Grep,Glob", "--max-turns", "30"],
+        cwd=cwd, capture_output=True, text=True, timeout=timeout)
+
+
+def _drifted(changed: list[str], declared: list[str]) -> list[str]:
+    """Files the agent touched outside its assigned paths. Drift is reported,
+    not blocked — admission control and the gate own correctness; the swarm
+    owns transparency."""
+    return sorted(set(changed) - set(declared))
+
+
 def _repo_listing(repo: str, cap: int = 200) -> str:
     """A compact file listing of the landed tip, source files first, capped."""
     code, out, _ = git_rc(repo, "ls-tree", "-r", "--name-only", "HEAD")
@@ -167,11 +183,7 @@ def _run_task(engine: Engine, state: SwarmState, goal: str, task: dict,
 
         prompt = WORKER_PROMPT.format(goal=goal, title=title, brief=brief,
                                       paths=", ".join(paths))
-        r = subprocess.run(
-            ["claude", "-p", prompt, "--model", model,
-             "--permission-mode", "acceptEdits",
-             "--allowedTools", "Edit,Write,Read,Grep,Glob", "--max-turns", "30"],
-            cwd=wt, capture_output=True, text=True, timeout=timeout)
+        r = _run_worker(prompt, model, timeout, wt)
         if r.returncode != 0:
             detail = f"agent failed: {r.stderr.strip()[:120]}"
             state.update(tid, "failed", detail=detail)
@@ -187,8 +199,11 @@ def _run_task(engine: Engine, state: SwarmState, goal: str, task: dict,
             "-c", "user.email=swarm@cafecito.local", "commit", "-q", "-s",
             "-m", f"{title}\n\n{brief}")
         head = git(wt, "rev-parse", "HEAD").strip()
+        changed = git(wt, "show", "--name-only", "--format=", head).split()
+        drift = _drifted(changed, paths)
+        drift_note = f" · drifted: {', '.join(drift[:4])}" if drift else ""
 
-        state.update(tid, "submitting", detail=f"head {head[:12]}")
+        state.update(tid, "submitting", detail=f"head {head[:12]}{drift_note}")
         result = engine.submit(head, agent=agent, title=title)
         verdict = result.get("verdict", "rejected")
         if verdict == "landed":
@@ -197,10 +212,11 @@ def _run_task(engine: Engine, state: SwarmState, goal: str, task: dict,
             detail = f"gate {secs}s" if secs is not None else "landed"
             if result.get("regenerated"):
                 detail += " (regenerated)"
+            detail += drift_note
             state.update(tid, "landed", detail=detail)
             return (tid, "landed", detail)
         # escalated / rejected — the engine never resolves a merge conflict
-        detail = result.get("reason", verdict)
+        detail = result.get("reason", verdict) + drift_note
         state.update(tid, "escalated", detail=detail)
         return (tid, "escalated", detail)
     except Exception as exc:  # noqa: BLE001 — any task failure is per-task
@@ -210,6 +226,27 @@ def _run_task(engine: Engine, state: SwarmState, goal: str, task: dict,
     finally:
         if wt:
             git_rc(engine.repo, "worktree", "remove", "--force", wt)
+
+
+def _run_task_with_retry(engine: Engine, state: SwarmState, goal: str,
+                         task: dict, model: str, timeout: int,
+                         retries: int) -> tuple[str, str, str]:
+    """Failed or escalated attempts get retried with the failure fed back to
+    a FRESH agent in a FRESH worktree off the CURRENT tip."""
+    tid, verdict, detail = _run_task(engine, state, goal, task, model, timeout)
+    attempt = 1
+    while verdict in ("failed", "escalated") and attempt <= retries:
+        attempt += 1
+        state.update(tid, "working", detail=f"retry {attempt}: {detail[:80]}")
+        retry_task = dict(task, brief=(
+            f"{task['brief']}\n\nPREVIOUS ATTEMPT FAILED: {detail[:300]}. "
+            "Address that failure explicitly and complete the task."))
+        tid, verdict, detail = _run_task(engine, state, goal, retry_task,
+                                         model, timeout)
+        detail = f"{detail} (attempt {attempt})"
+        state.update(tid, "landed" if verdict == "landed" else verdict,
+                     detail=detail)
+    return (tid, verdict, detail)
 
 
 def run_swarm(args) -> int:
@@ -235,10 +272,17 @@ def run_swarm(args) -> int:
     for t in tasks:
         print(f"  [{t['id']}] {t['title']}  ({', '.join(t['paths'])})")
 
+    if getattr(args, "dry_run", False):
+        print("\n(dry run — nothing executed)")
+        state.finish()
+        return 0
+
+    retries = getattr(args, "retries", 1)
     results: list[tuple[str, str, str]] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.agents) as pool:
-        futures = {pool.submit(_run_task, engine, state, args.goal, t,
-                               args.model, args.timeout): t for t in tasks}
+        futures = {pool.submit(_run_task_with_retry, engine, state, args.goal,
+                               t, args.model, args.timeout, retries): t
+                   for t in tasks}
         for fut in concurrent.futures.as_completed(futures):
             results.append(fut.result())
 
