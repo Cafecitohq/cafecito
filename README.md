@@ -32,7 +32,12 @@ cafecito watch        # in another terminal: the live fleet dashboard
 
 `swarm` plans the goal into independent tasks, pre-claims leases, runs the agents in
 parallel, and lands everything through the gate — commuting changes in parallel, collisions
-regenerated, contradictions escalated to you. `watch` shows it happening live.
+regenerated, contradictions escalated to you. `watch` shows it happening live:
+
+![cafecito swarm — a real fleet, recorded unedited](https://raw.githubusercontent.com/cafecitohq/cafecito/main/examples/swarm-demo.gif)
+
+*(Real recording: one sentence → three agents → three gated landings → green main, 31s.
+Reproduce it: `python3 examples/demo_swarm.py`.)*
 
 Any MCP-capable agent then coordinates through four tools: `sync` (get the landed tip or a
 ready worktree), `reserve` (advisory leases on symbols before starting work), `submit` (land a
