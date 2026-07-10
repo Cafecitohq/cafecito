@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 
 from .engine import Engine
@@ -80,6 +81,24 @@ TOOLS = [
         },
     },
     {
+        "name": "swarm",
+        "description": (
+            "Fire-and-forget: launch a parallel fleet for a goal. The plane "
+            "plans the goal into independent tasks, runs worker agents in "
+            "parallel, and lands everything through the gate. Returns "
+            "immediately with the spawned pid; follow progress with the "
+            "status tool (inflight) or `cafecito watch`."),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "goal": {"type": "string"},
+                "agents": {"type": "integer", "default": 3},
+                "model": {"type": "string", "default": "sonnet"},
+            },
+            "required": ["goal"],
+        },
+    },
+    {
         "name": "status",
         "description": (
             "Current landed tip, landing/escalation counts, recent landings "
@@ -119,6 +138,8 @@ def handle(engine: Engine, method: str, params: dict):
                 result = engine.submit(ref=args["ref"],
                                        agent=args.get("agent", ""),
                                        title=args.get("title", ""))
+            elif name == "swarm":
+                result = _spawn_swarm(engine, args)
             elif name == "status":
                 result = engine.status(limit=int(args.get("limit", 20)))
             else:
@@ -161,6 +182,24 @@ def serve(engine: Engine) -> int:
         sys.stdout.write(json.dumps(resp) + "\n")
         sys.stdout.flush()
     return 0
+
+
+def _spawn_swarm(engine: Engine, args: dict) -> dict:
+    """Detached `cafecito swarm` — MCP tool calls are synchronous, fleets are
+    not. Progress is observable via swarm.json (status/watch)."""
+    goal = args["goal"]
+    log = engine.state_dir / "swarm.log"
+    with log.open("a") as out:
+        proc = subprocess.Popen(
+            [sys.executable, "-m", "cafecito.cli", "swarm", goal,
+             "--repo", engine.repo,
+             "--agents", str(int(args.get("agents", 3))),
+             "--model", str(args.get("model", "sonnet"))],
+            stdout=out, stderr=subprocess.STDOUT,
+            start_new_session=True)
+    return {"started": True, "pid": proc.pid, "goal": goal,
+            "follow": f"cafecito watch --repo {engine.repo}",
+            "log": str(log)}
 
 
 def main() -> int:
