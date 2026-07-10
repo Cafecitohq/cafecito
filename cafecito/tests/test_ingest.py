@@ -82,7 +82,24 @@ def test_ingest_lands_comments_and_skips_seen(repo, monkeypatch):
 def test_repushed_head_is_reingested(repo, monkeypatch):
     eng = make_engine(repo)
     h1 = pr_branch(repo, "f1", "x = 2\n")
-    h2 = pr_branch(repo, "f2", "x = 3\n")
+    # the re-push must NOT collide with h1's landing: an offline suite may
+    # never reach the real reconciler (CI proved the original fixture did)
+    (repo / "other.py").write_text("y = 0\n")
+    subprocess.run(["git", "add", "-A"], cwd=repo, check=True,
+                   capture_output=True)
+    subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t",
+                    "commit", "-q", "-m", "add other"], cwd=repo, check=True,
+                   capture_output=True)
+    def sh(*args):
+        subprocess.run(args, cwd=repo, check=True, capture_output=True)
+    sh("git", "checkout", "-q", "-b", "f2", "main")
+    (repo / "other.py").write_text("y = 1\n")
+    sh("git", "add", "-A")
+    sh("git", "-c", "user.name=pr", "-c", "user.email=p@p", "commit", "-q",
+       "-m", "f2")
+    h2 = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo,
+                        capture_output=True, text=True).stdout.strip()
+    sh("git", "checkout", "-q", "main")
     heads = {"h": h1}
     monkeypatch.setattr(ingest, "_list_prs", lambda slug: [
         {"number": 9, "title": "evolving pr", "headRefOid": heads["h"]}])

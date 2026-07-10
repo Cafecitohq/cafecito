@@ -176,7 +176,9 @@ def live_regen(repo: str, base: str, tip: str, head: str, conflicted: set[str],
     t0 = time.time()
     try:
         output = run_reconciler(prompt, model)
-    except (RuntimeError, subprocess.TimeoutExpired) as e:
+    except FileNotFoundError:
+        return None, "reconciler unavailable: `claude` CLI not on PATH"
+    except (RuntimeError, OSError, subprocess.TimeoutExpired) as e:
         return None, f"reconciler: {str(e)[:120]}"
     blocks = {int(m.group(1)): m.group(2) for m in REGION_BLOCK_RE.finditer(output)}
     files = {}

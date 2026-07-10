@@ -99,3 +99,23 @@ def test_regen_retries_zero_escalates_first_failure(repo, monkeypatch):
     assert res["verdict"] == "escalated"
     assert res["reason"] == "failed landing gate"
     assert len(calls) == 1
+
+
+def test_missing_claude_cli_escalates_gracefully(repo, monkeypatch):
+    from cafecito import regen as regen_mod
+
+    eng = Engine(str(repo))
+    eng.config["test_cmd"] = [sys.executable, "-c", "pass"]
+    a = branch(repo, "wa", "def greet(name):\n    return f'hi {name}'.upper()\n",
+               "shout")
+    b = branch(repo, "wb", "def greet(name):\n    return f'hi {name}'.title()\n",
+               "titlecase")
+    assert eng.submit(a, agent="a", title="shout")["verdict"] == "landed"
+
+    def no_cli(prompt, model, timeout=300):
+        raise FileNotFoundError(2, "No such file or directory", "claude")
+
+    monkeypatch.setattr(regen_mod, "run_reconciler", no_cli)
+    res = eng.submit(b, agent="b", title="titlecase")
+    assert res["verdict"] == "escalated"
+    assert "reconciler unavailable" in res["reason"]
