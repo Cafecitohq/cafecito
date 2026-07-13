@@ -149,8 +149,9 @@ deterministic regeneration (`generated` config), not by merging.
 **Live end-to-end on TypeScript (2026-07-10):** beyond history mining, the full engine loop
 ran on a TS fixture — a 3-agent swarm writing TypeScript, gated by **vitest** (0.35s gates),
 3/3 landed, tip verified green. The loop is language-agnostic in practice, not just in the
-oracle. (Operational note: JS gate worktrees need the test runner reachable — an absolute
-runner path works today; a first-class `setup_cmd` gate step is on the roadmap.)
+oracle. (Operational note: JS gate worktrees need the test runner reachable — solved first-class in
+v0.10 by the `setup_cmd` gate step: the same repo now gates with `npm ci` + plain
+`npx vitest run`, 1.9s per landing.)
 
 The nest anomaly is a finding, not a failure: **58 of 60 conflicting pairs conflict only in
 `package-lock.json`**, and every remaining file overlap is a `package.json` — dependency-bump

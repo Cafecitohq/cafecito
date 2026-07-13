@@ -56,7 +56,8 @@ Symbol-level write sets for **Python, TypeScript/JavaScript, and Go** (stdlib sc
 anything unanalyzable widens safely to file granularity); other languages land at file
 granularity today. **Verification facts:** with `gate_mode: full`, every landing gates on the whole test
 suite — but verdicts are content-addressed by input closure, so only tests the landing
-actually touched execute; the rest inherit facts. **Generated files** (lockfiles etc.)
+actually touched execute; the rest inherit facts. **Bare gate worktrees** get prepared by your
+`--setup-cmd` (`npm ci`, `pip install -e .`) before tests run. **Generated files** (lockfiles etc.)
 skip merging *and* the reconciler:
 declare `cafecito init --generated "package-lock.json=npm install --package-lock-only"` and
 conflicts re-run the generator against the merged sources — in our TypeScript corpus that
