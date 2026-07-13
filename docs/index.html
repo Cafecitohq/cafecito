@@ -64,8 +64,9 @@
   .cmd .row { padding: 13px 16px; display: flex; gap: 10px; align-items: baseline; }
   .cmd .row + .row { border-top: 1px solid #241b16; }
   .cmd .p { color: var(--teal); user-select: none; }
-  .cmd code { color: var(--ink); white-space: pre-wrap; }
+  .cmd code { color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
   .cmd .c { color: var(--dim); }
+  code { font-family: var(--mono); font-size: 0.92em; }
 
   .btns { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
   .btn {
@@ -89,6 +90,13 @@
   .exit.regen .k { color: var(--crema); }
   .exit.escalate .k { color: var(--red); }
   .exit p { font-size: 14.5px; color: var(--muted); }
+
+  .feats { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  @media (min-width: 640px) { .feats { grid-template-columns: repeat(2, 1fr); } }
+  .feat { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .feat .k { font-family: var(--mono); font-size: 13px; margin-bottom: 10px; font-weight: 600; color: var(--crema); }
+  .feat p { font-size: 14.5px; color: var(--muted); }
+  .feat code { color: var(--ink); }
 
   .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
   @media (min-width: 640px) { .stats { grid-template-columns: repeat(4, 1fr); } }
@@ -136,6 +144,7 @@
       <div class="row"><span class="p">$</span><code>pipx install git+https://github.com/cafecitohq/cafecito</code></div>
       <div class="row"><span class="p">$</span><code>cafecito init --repo . --test-cmd "pytest -q"</code></div>
       <div class="row"><span class="p">$</span><code>claude mcp add cafecito -- cafecito serve --repo .</code></div>
+      <div class="row"><span class="p">$</span><code>cafecito swarm "add rate limiting, retries, tests" --agents 3  <span class="c"># one sentence → a fleet</span></code></div>
     </div>
 
     <div class="btns">
@@ -150,6 +159,14 @@
          alt="Terminal demo: three agents land in parallel — two commute, one collision is regenerated live, main ends green"
          width="983" height="694" loading="lazy">
     <p style="color:var(--dim);font-size:13px;margin-top:14px">Three agents branch from the same commit. Two commute and land in parallel; the third collides and is regenerated from both intents by a live reconciler — gated, trailer-stamped, main green. The pause in the middle is a real model call. <a href="https://github.com/cafecitohq/cafecito/blob/main/examples/demo.sh">Run it yourself</a>.</p>
+  </section>
+
+  <section id="swarm">
+    <h2>Or skip the wiring — summon the fleet</h2>
+    <img class="demo" src="https://raw.githubusercontent.com/cafecitohq/cafecito/main/examples/swarm-demo.gif"
+         alt="cafecito swarm: one goal sentence becomes three agents and three gated landings, main ends green"
+         width="691" height="490" loading="lazy">
+    <p style="color:var(--dim);font-size:13px;margin-top:14px">One goal sentence. <code>cafecito swarm</code> plans it into independent tasks, pre-claims leases, runs the agents in parallel, and lands everything through the gate — while <code>cafecito watch</code> shows the fleet live. Real recording: one sentence → three agents → three gated landings → green main, 31 seconds. <a href="https://github.com/cafecitohq/cafecito/blob/main/examples/demo_swarm.py">Reproduce it</a>.</p>
   </section>
 
   <section id="how">
@@ -170,6 +187,36 @@
     </div>
   </section>
 
+  <section id="features">
+    <h2>Shipped, not planned</h2>
+    <div class="feats">
+      <div class="feat">
+        <div class="k">cafecito ingest — PRs land through the plane</div>
+        <p>Keep opening ordinary GitHub PRs. <code>ingest</code> lands them through the gate — trailer-stamped, receipt commented, labeled. Its first production input was <a href="https://github.com/cafecitohq/cafecito/pull/1">the pull request that documents it</a>.</p>
+      </div>
+      <div class="feat">
+        <div class="k">Python · TypeScript/JS · Go</div>
+        <p>Symbol-level write sets from stdlib-only scanners — zero runtime dependencies. Anything unanalyzable widens safely to file granularity; other languages land at file granularity today.</p>
+      </div>
+      <div class="feat">
+        <div class="k">generated files never meet the reconciler</div>
+        <p>Declare a generator (<code>"package-lock.json=npm install --package-lock-only"</code>) and conflicts re-run it against the merged sources. In our TypeScript corpus that was 58 of 60 real conflicts.</p>
+      </div>
+      <div class="feat">
+        <div class="k">memoized verification</div>
+        <p>Every landing gates on the whole test suite — but verdicts are content-addressed by input closure, so only tests the landing actually touched execute. The rest inherit facts.</p>
+      </div>
+      <div class="feat">
+        <div class="k">reconciler retry-with-context</div>
+        <p>A failed regeneration doesn't escalate blindly: the gate failure is fed back into a retry, so the reconciler gets to read the test output before a human has to.</p>
+      </div>
+      <div class="feat">
+        <div class="k">operator tooling</div>
+        <p><code>watch</code> is the live fleet dashboard; <code>doctor</code> checks your install; <code>gc</code> cleans up; <code>--setup-cmd</code> prepares bare gate worktrees (<code>npm ci</code>, <code>pip install -e .</code>) before tests run.</p>
+      </div>
+    </div>
+  </section>
+
   <section>
     <h2>Measured, not asserted</h2>
     <div class="stats">
@@ -186,14 +233,16 @@
       <tr><th>strategy</th><th style="text-align:right">wall-clock</th><th style="text-align:right">CI compute</th></tr>
       <tr><td>serial merge queue</td><td class="num">5.50 h</td><td class="num">93.5 h</td></tr>
       <tr><td>file locking</td><td class="num">3.03 h</td><td class="num">29.7 h</td></tr>
+      <tr><td>speculative queue, unlimited window</td><td class="num">1.83 h</td><td class="num">43.3 h</td></tr>
       <tr class="win"><td>cafecito</td><td class="num">1.37 h</td><td class="num">16.2 h</td></tr>
     </table>
-    <p style="color:var(--dim);font-size:13px;margin-top:14px">Projected 10-min CI over measured schedules. 30/33 landed automatically, 3 correctly escalated, final main green — checked by running the combined test suite, not assumed.</p>
+    <p style="color:var(--dim);font-size:13px;margin-top:14px">Projected 10-min CI over measured schedules. 30/33 landed automatically, 3 correctly escalated, final main green — checked by running the combined test suite, not assumed. The speculative queue is modeled <em>generously</em> (free conflict discovery, offline resolution) and still loses on both axes at fleet conflict density — <a href="https://github.com/cafecitohq/cafecito/tree/main/bench">the honest caveats</a>.</p>
   </section>
 
   <section>
     <h2>It builds itself</h2>
     <p class="quote">cafecito's own test suite was written by uncoordinated agents and landed through cafecito — <b>including the fix for the first bug we found, which the engine landed while that code path was broken.</b></p>
+    <p style="color:var(--muted);font-size:14.5px;margin-top:16px">Since v0.1, <a href="https://github.com/cafecitohq/cafecito/blob/main/docs/building-itself.md">every feature has landed through cafecito itself</a>. Twenty-three self-hosted landings and counting: most commuted, the collisions were regenerated live, and nobody stared at a conflict marker.</p>
   </section>
 
   <footer>
