@@ -5,7 +5,8 @@
 **An integration control plane for AI agent fleets.**
 *Prove independence when you can. Re-derive when you can't. Never resolve a conflict.*
 
-> **Status: v0.8 — a working single-repo control plane.** The physics is validated
+> **Status: pre-1.0 — a working single-repo control plane** (current version: see
+> [releases](https://github.com/cafecitohq/cafecito/releases)). The physics is validated
 > ([phase0/](phase0/), [bench/](bench/)); the engine, MCP server, fleet (`swarm`/`watch`),
 > PR gateway (`ingest`), memoized gates, and wave-parallel landing all run for real — and
 > every feature since v0.1 [landed through cafecito itself](docs/building-itself.md).
@@ -108,7 +109,7 @@ market category it replaces (see [SPEC.md §1.1](SPEC.md)).
 |---|---|---|
 | [phase0/](phase0/) | Falsification experiments A (commutativity rate) and B (regenerative-merge success rate) on real repos | **active** |
 | [SPEC.md](SPEC.md) | Protocol: changesets, leases, landed log, verification facts, MCP surface | v0 — all surfaces implemented |
-| [cafecito/](cafecito/) | The product: oracle (py/ts/js/go/json write sets), engine (commute/regenerate/escalate, memoized gates, wave-parallel admission), MCP server, `swarm`/`watch`/`ingest`, CLI — `pip install`able, zero dependencies | **v0.8** |
+| [cafecito/](cafecito/) | The product: oracle (py/ts/js/go/json write sets), engine (commute/regenerate/escalate, memoized gates, wave-parallel admission), MCP server, `swarm`/`watch`/`ingest`, CLI — `pip install`able, zero dependencies | **active** |
 | [sdk/](sdk/) | TypeScript / Python client SDKs | design |
 | [gateway/](gateway/) | Git gateway: materialized branch, `advance`, and PR ingestion (`cafecito ingest`, [proven on PR #1](https://github.com/Cafecitohq/cafecito/pull/1)); webhooks/hosted App pending | **shipped in cafecito/** |
 | [bench/](bench/) | MergeBench — a real 33-agent burst: 5.5h serial queue vs **1.37h** cafecito (10-min CI), 93.5 vs 16.2 CI-hours, landed for real with green main | **active** |
