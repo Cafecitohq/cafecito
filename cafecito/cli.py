@@ -43,6 +43,9 @@ def cmd_init(args) -> int:
     if args.require_signal:
         eng.config["require_signal"] = True
         changed = True
+    if args.setup_cmd:
+        eng.config["setup_cmd"] = shlex.split(args.setup_cmd)
+        changed = True
     for spec in args.generated or []:
         pat, _, cmd = spec.partition("=")
         if not cmd:
@@ -150,6 +153,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--test-cmd", help='gate command, e.g. "python3 -m pytest -q"')
     p.add_argument("--require-signal", action="store_true",
                    help="refuse landings with no test signal")
+    p.add_argument("--setup-cmd", help='prepare gate worktrees, e.g. "npm ci"')
     p.add_argument("--generated", action="append", metavar="PATTERN=COMMAND",
                    help='deterministic regeneration, e.g. '
                         '"package-lock.json=npm install --package-lock-only"')

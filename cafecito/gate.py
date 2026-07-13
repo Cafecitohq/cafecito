@@ -75,8 +75,27 @@ def blob_map(repo: str, rev: str) -> dict[str, str]:
     return m
 
 
+def _run_setup(worktree: pathlib.Path, setup_cmd: list[str],
+               timeout: int) -> str | None:
+    """Prepare a bare worktree (npm ci, pip install, …). Runs with the REAL
+    environment — installs need caches and network — unlike the tests, which
+    keep their restricted env. Returns an error string or None."""
+    try:
+        r = subprocess.run(setup_cmd, cwd=worktree, capture_output=True,
+                           text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return f"setup timeout >{timeout}s"
+    except OSError as e:
+        return f"setup failed to start: {e}"
+    if r.returncode != 0:
+        return f"setup failed: {(r.stderr or r.stdout).strip()[-200:]}"
+    return None
+
+
 def run_gate(repo: str, candidate: str, test_files: list[str],
-             test_cmd: list[str], timeout: int = 900, facts=None) -> dict:
+             test_cmd: list[str], timeout: int = 900, facts=None,
+             setup_cmd: list[str] | None = None,
+             setup_timeout: int = 600) -> dict:
     """Materialize `candidate` in a throwaway worktree and run the tests.
 
     With a FactsStore, runs are per test file and memoized: a file whose
@@ -108,6 +127,10 @@ def run_gate(repo: str, candidate: str, test_files: list[str],
     try:
         if facts is None:
             git(repo, "worktree", "add", "--detach", "--quiet", str(wt), candidate)
+            if setup_cmd:
+                err = _run_setup(wt, setup_cmd, setup_timeout)
+                if err:
+                    return finish(False, err)
             try:
                 r = subprocess.run([*test_cmd, *test_files], cwd=wt, env=env,
                                    capture_output=True, text=True, timeout=timeout)
@@ -133,6 +156,11 @@ def run_gate(repo: str, candidate: str, test_files: list[str],
             return finish(True, f"all {hits} facts inherited",
                           {"memo": {"hits": hits, "runs": 0}})
         git(repo, "worktree", "add", "--detach", "--quiet", str(wt), candidate)
+        if setup_cmd:
+            err = _run_setup(wt, setup_cmd, setup_timeout)
+            if err:
+                return finish(False, err,
+                              {"memo": {"hits": hits, "runs": 0}})
         green, last = True, ""
         runs = 0
         for f, key in plan:

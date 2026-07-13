@@ -59,6 +59,10 @@ DEFAULT_CONFIG = {
     # reconciler attempts with the gate failure fed back (deterministic
     # generator output never retries — same inputs, same result)
     "regen_retries": 1,
+    # prepare bare gate worktrees before tests (npm ci, pip install -e ., …);
+    # runs with the real environment, unlike the tests themselves
+    "setup_cmd": [],
+    "setup_timeout_s": 600,
 }
 
 
@@ -270,7 +274,9 @@ class Engine:
                 else None
             gate = run_gate(self.repo, candidate, gate_files,
                             self.config["test_cmd"],
-                            timeout=self.config["gate_timeout_s"], facts=facts)
+                            timeout=self.config["gate_timeout_s"], facts=facts,
+                            setup_cmd=self.config.get("setup_cmd") or None,
+                            setup_timeout=self.config.get("setup_timeout_s", 600))
             no_signal_refused = (gate["green"] and gate.get("no_signal")
                                  and self.config.get("require_signal"))
             if not gate["green"] or no_signal_refused:
