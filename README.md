@@ -10,7 +10,7 @@
 > ([phase0/](phase0/), [bench/](bench/)); the engine, MCP server, fleet (`swarm`/`watch`),
 > PR gateway (`ingest`), memoized gates, and wave-parallel landing all run for real — and
 > every feature since v0.1 [landed through cafecito itself](docs/building-itself.md).
-> Not yet: multi-repo, webhooks/hosted App, containers. Sharp edges remain.
+> Not yet: multi-repo, webhooks/hosted App. Sharp edges remain.
 
 ![Three agents land in parallel: two commute, one collision is regenerated live, main ends green](examples/demo.gif)
 
@@ -58,7 +58,12 @@ anything unanalyzable widens safely to file granularity); other languages land a
 granularity today. **Verification facts:** with `gate_mode: full`, every landing gates on the whole test
 suite — but verdicts are content-addressed by input closure, so only tests the landing
 actually touched execute; the rest inherit facts. **Bare gate worktrees** get prepared by your
-`--setup-cmd` (`npm ci`, `pip install -e .`) before tests run. **Generated files** (lockfiles etc.)
+`--setup-cmd` (`npm ci`, `pip install -e .`) before tests run. **Gate isolation:** the gate
+executes candidate code, so `isolation: sandbox` (macOS) runs every test invocation with the
+network denied and file writes confined to the gate's own worktree; a `container` backend
+(docker/podman, `--network=none`) ships experimental. Unavailable backends redden the gate —
+never a silent fallback to unisolated runs. Facts are keyed by isolation mode, so a green
+minted with the network open can't satisfy a sandboxed gate. **Generated files** (lockfiles etc.)
 skip merging *and* the reconciler:
 declare `cafecito init --generated "package-lock.json=npm install --package-lock-only"` and
 conflicts re-run the generator against the merged sources — in our TypeScript corpus that

@@ -73,6 +73,23 @@ landed as an engine-authored commit, labeled `cafecito:landed`, commented with t
 closed by a human. The feature's first production input was the pull request that documents
 it.
 
+## The sandbox's maiden landing caught a bug
+
+v0.11.0 gave the gate isolation backends — `sandbox` wraps every test invocation in macOS
+`sandbox-exec` (network denied, writes confined to the gate's own worktree), `container`
+does the same with docker/podman. Naturally we flipped our own plane to `sandbox` **before**
+landing the feature, so the changeset that implements the boundary had to land through it.
+
+The gate escalated the first submission. Inside the sandbox, the gate confines `TMPDIR` to
+its scratch directory — which put pytest's temp tree under a path containing `cafecito-`,
+and one of our own tests asserted that string never appears in `git worktree list` output.
+An over-broad assertion that had been latently wrong for anyone running tests with an
+unlucky `TMPDIR`, surfaced by the first sandboxed gate that ever ran it. The second
+submission taught the counterpart lesson: tests that *prove the absence* of a boundary
+(connect refused ≠ connect denied) must probe their environment first, because inside a
+sandboxed gate the boundary is already there. Both fixes landed in the same changeset —
+verdict `landed`, two verification facts inherited from the escalated attempt, main green.
+
 ## What four days of self-hosting proved
 
 - **The three exits are sufficient for real development.** Twenty-three landings: most
