@@ -63,6 +63,15 @@ DEFAULT_CONFIG = {
     # runs with the real environment, unlike the tests themselves
     "setup_cmd": [],
     "setup_timeout_s": 600,
+    # run gate tests behind an isolation boundary (isolation.py):
+    # "none" | "sandbox" (macOS sandbox-exec: no network, writes confined
+    # to the gate worktree) | "container" (docker/podman, --network=none;
+    # requires container_image). Unavailable backends redden the gate —
+    # never a silent fallback to unisolated runs. setup_cmd still runs on
+    # the host with the real environment.
+    "isolation": "none",
+    "container_image": "",
+    "container_runtime": "",
 }
 
 
@@ -276,7 +285,10 @@ class Engine:
                             self.config["test_cmd"],
                             timeout=self.config["gate_timeout_s"], facts=facts,
                             setup_cmd=self.config.get("setup_cmd") or None,
-                            setup_timeout=self.config.get("setup_timeout_s", 600))
+                            setup_timeout=self.config.get("setup_timeout_s", 600),
+                            isolation_mode=self.config.get("isolation", "none"),
+                            container_image=self.config.get("container_image", ""),
+                            container_runtime=self.config.get("container_runtime", ""))
             no_signal_refused = (gate["green"] and gate.get("no_signal")
                                  and self.config.get("require_signal"))
             if not gate["green"] or no_signal_refused:

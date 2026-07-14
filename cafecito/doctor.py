@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import time
 
+from . import isolation
 from .engine import Engine
 from .facts import MAX_FACTS
 from .gitutil import git_rc
@@ -85,6 +86,18 @@ def collect_checks(repo: str) -> list[dict]:
         checks.append(_check("test_cmd", OK, argv0))
     else:
         checks.append(_check("test_cmd", ERR, f"{argv0!r} not executable"))
+
+    mode = eng.config.get("isolation", "none")
+    iso_err = isolation.unavailable(mode, eng.config.get("container_image", ""),
+                                    eng.config.get("container_runtime", ""))
+    if iso_err:
+        checks.append(_check("isolation", ERR, f"{mode}: {iso_err} — "
+                                               f"gates will redden"))
+    elif mode == "none":
+        checks.append(_check("isolation", WARN,
+                             "none — gate runs candidate code unisolated"))
+    else:
+        checks.append(_check("isolation", OK, mode))
 
     stale_wts = _engine_worktrees(eng.repo)
     dead = [p for p in stale_wts

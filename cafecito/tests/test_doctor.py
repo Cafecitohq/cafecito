@@ -68,4 +68,7 @@ def test_gc_cleans_leases_inflight_and_worktrees(repo):
     assert eng._inflight() == {}
     out = subprocess.run(["git", "worktree", "list"], cwd=repo,
                          capture_output=True, text=True).stdout
-    assert "cafecito-" not in out
+    # assert on the ghost's exact path — a bare "cafecito-" substring check
+    # false-positives when TMPDIR itself contains it (e.g. inside a
+    # sandboxed gate, where pytest's tmp_path lives under cafecito-gate-*)
+    assert wt not in out

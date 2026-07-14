@@ -12,6 +12,7 @@ import subprocess
 import tempfile
 import time
 
+from . import isolation
 from .closure import python_closure
 from .facts import fact_key
 from .gitutil import git, git_rc
@@ -95,7 +96,9 @@ def _run_setup(worktree: pathlib.Path, setup_cmd: list[str],
 def run_gate(repo: str, candidate: str, test_files: list[str],
              test_cmd: list[str], timeout: int = 900, facts=None,
              setup_cmd: list[str] | None = None,
-             setup_timeout: int = 600) -> dict:
+             setup_timeout: int = 600, isolation_mode: str = "none",
+             container_image: str = "",
+             container_runtime: str = "") -> dict:
     """Materialize `candidate` in a throwaway worktree and run the tests.
 
     With a FactsStore, runs are per test file and memoized: a file whose
@@ -103,6 +106,10 @@ def run_gate(repo: str, candidate: str, test_files: list[str],
     closure.py) is content-identical to a previously green run inherits the
     fact instead of executing. Closure confusion → the file always runs.
     Only green verdicts are recorded; reds re-run every time.
+
+    Test invocations run under `isolation_mode` (see isolation.py); an
+    unavailable backend reddens the gate rather than running unisolated.
+    Setup keeps the real environment either way — installs need network.
 
     Returns {green, seconds, summary, tests, memo?}. Empty test set is
     reported green with `no_signal: True` — landed, but flagged in the log.
@@ -114,6 +121,17 @@ def run_gate(repo: str, candidate: str, test_files: list[str],
     wt = scratch / "wt"
     env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "HOME": str(scratch),
            "PYTHONDONTWRITEBYTECODE": "1", "MPLBACKEND": "Agg", "LC_ALL": "C.UTF-8"}
+    iso_err = isolation.unavailable(isolation_mode, container_image,
+                                    container_runtime)
+    if isolation_mode == "sandbox" and not iso_err:
+        (scratch / "tmp").mkdir()
+        env["TMPDIR"] = str(scratch / "tmp")
+    def _wrap():
+        return isolation.wrap(test_cmd, isolation_mode, worktree=str(wt),
+                              write_roots=[str(scratch)],
+                              image=container_image,
+                              runtime=container_runtime)
+
     t0 = time.time()
 
     def finish(green, summary, extra=None):
@@ -126,13 +144,16 @@ def run_gate(repo: str, candidate: str, test_files: list[str],
 
     try:
         if facts is None:
+            if iso_err:
+                return finish(False, f"isolation unavailable: {iso_err}")
             git(repo, "worktree", "add", "--detach", "--quiet", str(wt), candidate)
             if setup_cmd:
                 err = _run_setup(wt, setup_cmd, setup_timeout)
                 if err:
                     return finish(False, err)
+            run_cmd = _wrap()
             try:
-                r = subprocess.run([*test_cmd, *test_files], cwd=wt, env=env,
+                r = subprocess.run([*run_cmd, *test_files], cwd=wt, env=env,
                                    capture_output=True, text=True, timeout=timeout)
             except subprocess.TimeoutExpired:
                 return finish(False, f"gate timeout >{timeout}s")
@@ -141,13 +162,17 @@ def run_gate(repo: str, candidate: str, test_files: list[str],
 
         blobs = blob_map(repo, candidate)
         listing = set(blobs)
+        # facts recorded under isolation are distinct facts — a green run
+        # with network open must not be inherited by a sandboxed gate
+        key_cmd = (test_cmd if isolation_mode == "none"
+                   else [f"isolation:{isolation_mode}", *test_cmd])
         plan = []  # (file, key or None)
         hits = 0
         for f in test_files:
             closure = python_closure(repo, candidate, f, listing)
             key = None
             if closure is not None:
-                key = fact_key(test_cmd, f, [(p, blobs[p]) for p in sorted(closure)])
+                key = fact_key(key_cmd, f, [(p, blobs[p]) for p in sorted(closure)])
                 if facts.green(key):
                     hits += 1
                     continue
@@ -155,17 +180,21 @@ def run_gate(repo: str, candidate: str, test_files: list[str],
         if not plan:
             return finish(True, f"all {hits} facts inherited",
                           {"memo": {"hits": hits, "runs": 0}})
+        if iso_err:
+            return finish(False, f"isolation unavailable: {iso_err}",
+                          {"memo": {"hits": hits, "runs": 0}})
         git(repo, "worktree", "add", "--detach", "--quiet", str(wt), candidate)
         if setup_cmd:
             err = _run_setup(wt, setup_cmd, setup_timeout)
             if err:
                 return finish(False, err,
                               {"memo": {"hits": hits, "runs": 0}})
+        run_cmd = _wrap()
         green, last = True, ""
         runs = 0
         for f, key in plan:
             try:
-                r = subprocess.run([*test_cmd, f], cwd=wt, env=env,
+                r = subprocess.run([*run_cmd, f], cwd=wt, env=env,
                                    capture_output=True, text=True, timeout=timeout)
             except subprocess.TimeoutExpired:
                 return finish(False, f"gate timeout >{timeout}s in {f}",
