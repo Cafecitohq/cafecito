@@ -1,6 +1,6 @@
 # cafecito ☕
 
-[![ci](https://github.com/cafecitohq/cafecito/actions/workflows/ci.yml/badge.svg)](https://github.com/cafecitohq/cafecito/actions/workflows/ci.yml)
+[![ci](https://github.com/cafecitohq/cafecito/actions/workflows/ci.yml/badge.svg)](https://github.com/cafecitohq/cafecito/actions/workflows/ci.yml) [![PyPI](https://img.shields.io/pypi/v/cafecito)](https://pypi.org/project/cafecito/)
 
 **An integration control plane for AI agent fleets.**
 *Prove independence when you can. Re-derive when you can't. Never resolve a conflict.*
@@ -21,7 +21,7 @@ gated, trailer-stamped, main green. Run it yourself: [`examples/demo.sh`](exampl
 ## Quickstart
 
 ```sh
-pipx install git+https://github.com/cafecitohq/cafecito   # or: pip install . from a clone
+pipx install cafecito          # PyPI · or git+https://github.com/cafecitohq/cafecito for main
 cafecito init --repo /path/to/your/repo --test-cmd "python3 -m pytest -q"
 claude mcp add cafecito -- cafecito serve --repo /path/to/your/repo
 ```

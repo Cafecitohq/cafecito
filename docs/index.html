@@ -141,7 +141,7 @@
     <p class="sub">Run a fleet of coding agents against one repo and they gridlock — every landing forces the rest to rebase, re-test, and requeue. cafecito lands independent changes in parallel, regenerates the collisions, and never resolves a conflict.</p>
 
     <div class="cmd">
-      <div class="row"><span class="p">$</span><code>pipx install git+https://github.com/cafecitohq/cafecito</code></div>
+      <div class="row"><span class="p">$</span><code>pipx install cafecito</code></div>
       <div class="row"><span class="p">$</span><code>cafecito init --repo . --test-cmd "pytest -q"</code></div>
       <div class="row"><span class="p">$</span><code>claude mcp add cafecito -- cafecito serve --repo .</code></div>
       <div class="row"><span class="p">$</span><code>cafecito swarm "add rate limiting, retries, tests" --agents 3  <span class="c"># one sentence → a fleet</span></code></div>
