@@ -16,6 +16,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Topic :: Software Development :: Version Control :: Git",
+    "License :: OSI Approved :: Apache Software License",
 ]
 
 [project.scripts]
@@ -24,6 +25,8 @@ cafecito = "cafecito.cli:main"
 [project.urls]
 Homepage = "https://cafeci.to"
 Source = "https://github.com/cafecitohq/cafecito"
+Issues = "https://github.com/cafecitohq/cafecito/issues"
+Changelog = "https://github.com/cafecitohq/cafecito/releases"
 
 [tool.setuptools]
 packages = ["cafecito", "cafecito.tests"]

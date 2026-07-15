@@ -12,7 +12,7 @@
 > every feature since v0.1 [landed through cafecito itself](docs/building-itself.md).
 > Not yet: multi-repo, webhooks/hosted App. Sharp edges remain.
 
-![Three agents land in parallel: two commute, one collision is regenerated live, main ends green](examples/demo.gif)
+![Three agents land in parallel: two commute, one collision is regenerated live, main ends green](https://raw.githubusercontent.com/cafecitohq/cafecito/main/examples/demo.gif)
 
 *34 unedited seconds: three agents branch from the same commit; two commute and land in
 parallel, the third collides and is regenerated from both intents by a live reconciler call —
