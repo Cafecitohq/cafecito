@@ -202,6 +202,9 @@ def main(argv: list[str] | None = None) -> int:
                    help="plan and print tasks, execute nothing")
     p.add_argument("--retries", type=int, default=1,
                    help="retries per failed/escalated task (default 1)")
+    p.add_argument("--drift-wait", type=int, default=120, dest="drift_wait",
+                   help="seconds a drifted task waits for contended leases "
+                        "before submitting anyway (default 120)")
     p.set_defaults(fn=cmd_swarm)
 
     p = sub.add_parser("ingest", help="poll open GitHub PRs and land them through the plane")

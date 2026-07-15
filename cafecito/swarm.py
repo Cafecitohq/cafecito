@@ -16,6 +16,7 @@ import concurrent.futures
 import json
 import re
 import subprocess
+import time
 
 from .engine import Engine
 from .fleetstate import SwarmState
@@ -139,6 +140,29 @@ def _drifted(changed: list[str], declared: list[str]) -> list[str]:
     return sorted(set(changed) - set(declared))
 
 
+def _contain_drift(engine: Engine, agent: str, drift: list[str],
+                   wait_s: float = 120, poll_s: float = 3.0) -> str:
+    """Reserve the paths a worker touched beyond its assignment BEFORE its
+    changeset enters the pipeline. Nobody leased these files, so a sibling
+    task may be editing them right now — reserving turns that merge-time
+    collision into an intent-time wait, which is the whole point of leases.
+    Leases stay advisory: past `wait_s` the changeset submits anyway (the
+    engine owns correctness); what the swarm owns is not knowingly racing
+    its own fleet. Returns a note for the task detail, empty when clean."""
+    keys = [f"file:{p}" for p in drift]
+    deadline = time.time() + wait_s
+    while True:
+        lease = engine.reserve(keys=keys, agent=agent,
+                               intent="drift containment")
+        if lease.get("granted"):
+            return ""
+        if time.time() >= deadline:
+            holders = ", ".join(sorted({c["holder"] for c in
+                                        lease.get("conflicts", [])}))
+            return f" · drift contended (held by {holders})"
+        time.sleep(poll_s)
+
+
 def _repo_listing(repo: str, cap: int = 200) -> str:
     """A compact file listing of the landed tip, source files first, capped."""
     code, out, _ = git_rc(repo, "ls-tree", "-r", "--name-only", "HEAD")
@@ -158,7 +182,8 @@ def _repo_listing(repo: str, cap: int = 200) -> str:
 # ------------------------------------------------------------------ execution ---
 
 def _run_task(engine: Engine, state: SwarmState, goal: str, task: dict,
-              model: str, timeout: int) -> tuple[str, str, str]:
+              model: str, timeout: int,
+              drift_wait: float = 120) -> tuple[str, str, str]:
     """Build and submit one task. Returns (id, verdict, detail)."""
     tid = task["id"]
     title = task["title"]
@@ -203,6 +228,11 @@ def _run_task(engine: Engine, state: SwarmState, goal: str, task: dict,
         changed = git(wt, "show", "--name-only", "--format=", head).split()
         drift = _drifted(changed, paths)
         drift_note = f" · drifted: {', '.join(drift[:4])}" if drift else ""
+        if drift:
+            state.update(tid, "submitting",
+                         detail=f"containing drift{drift_note}")
+            drift_note += _contain_drift(engine, agent, drift,
+                                         wait_s=drift_wait)
 
         state.update(tid, "submitting", detail=f"head {head[:12]}{drift_note}")
         result = engine.submit(head, agent=agent, title=title)
@@ -231,10 +261,12 @@ def _run_task(engine: Engine, state: SwarmState, goal: str, task: dict,
 
 def _run_task_with_retry(engine: Engine, state: SwarmState, goal: str,
                          task: dict, model: str, timeout: int,
-                         retries: int) -> tuple[str, str, str]:
+                         retries: int,
+                         drift_wait: float = 120) -> tuple[str, str, str]:
     """Failed or escalated attempts get retried with the failure fed back to
     a FRESH agent in a FRESH worktree off the CURRENT tip."""
-    tid, verdict, detail = _run_task(engine, state, goal, task, model, timeout)
+    tid, verdict, detail = _run_task(engine, state, goal, task, model, timeout,
+                                     drift_wait=drift_wait)
     attempt = 1
     while verdict in ("failed", "escalated") and attempt <= retries:
         attempt += 1
@@ -243,7 +275,8 @@ def _run_task_with_retry(engine: Engine, state: SwarmState, goal: str,
             f"{task['brief']}\n\nPREVIOUS ATTEMPT FAILED: {detail[:300]}. "
             "Address that failure explicitly and complete the task."))
         tid, verdict, detail = _run_task(engine, state, goal, retry_task,
-                                         model, timeout)
+                                         model, timeout,
+                                         drift_wait=drift_wait)
         detail = f"{detail} (attempt {attempt})"
         state.update(tid, "landed" if verdict == "landed" else verdict,
                      detail=detail)
@@ -279,10 +312,12 @@ def run_swarm(args) -> int:
         return 0
 
     retries = getattr(args, "retries", 1)
+    drift_wait = getattr(args, "drift_wait", 120)
     results: list[tuple[str, str, str]] = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.agents) as pool:
         futures = {pool.submit(_run_task_with_retry, engine, state, args.goal,
-                               t, args.model, args.timeout, retries): t
+                               t, args.model, args.timeout, retries,
+                               drift_wait): t
                    for t in tasks}
         for fut in concurrent.futures.as_completed(futures):
             results.append(fut.result())
