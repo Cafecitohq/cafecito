@@ -35,7 +35,9 @@ cafecito watch        # in another terminal: the live fleet dashboard
 
 `swarm` plans the goal into independent tasks, pre-claims leases, runs the agents in
 parallel, and lands everything through the gate — commuting changes in parallel, collisions
-regenerated, contradictions escalated to you. `watch` shows it happening live:
+regenerated, contradictions escalated to you. Workers that drift outside their assigned
+paths get contained: the drifted paths are leased before the changeset enters the pipeline,
+so a fleet never knowingly races itself. `watch` shows it happening live:
 
 ![cafecito swarm — a real fleet, recorded unedited](https://raw.githubusercontent.com/cafecitohq/cafecito/main/examples/swarm-demo.gif)
 
