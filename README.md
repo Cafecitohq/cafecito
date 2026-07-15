@@ -36,8 +36,11 @@ cafecito watch        # in another terminal: the live fleet dashboard
 `swarm` plans the goal into independent tasks, pre-claims leases, runs the agents in
 parallel, and lands everything through the gate — commuting changes in parallel, collisions
 regenerated, contradictions escalated to you. Workers that drift outside their assigned
-paths get contained: the drifted paths are leased before the changeset enters the pipeline,
-so a fleet never knowingly races itself. `watch` shows it happening live:
+paths get contained at the oracle's granularity: the *symbols* they actually wrote are
+leased before the changeset enters the pipeline (whole files only when a file can't be
+analyzed), so a fleet never knowingly races itself — and a sibling editing a different
+symbol in the same file doesn't wait, because symbol-disjoint writers commute. `watch`
+shows it happening live:
 
 ![cafecito swarm — a real fleet, recorded unedited](https://raw.githubusercontent.com/cafecitohq/cafecito/main/examples/swarm-demo.gif)
 
