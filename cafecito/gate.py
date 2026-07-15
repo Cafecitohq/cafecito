@@ -13,7 +13,7 @@ import tempfile
 import time
 
 from . import isolation
-from .closure import python_closure
+from .closure import input_closure
 from .facts import fact_key
 from .gitutil import git, git_rc
 
@@ -31,6 +31,18 @@ def _is_test_file(p: str) -> bool:
     if p.endswith(".py"):
         return name.startswith("test_") or name.endswith("_test.py")
     return False
+
+
+def test_family(p: str) -> str | None:
+    """Which runner family a test file belongs to — one test_cmd can only
+    execute one ecosystem's tests, so full gate mode filters by family."""
+    if p.endswith(".py"):
+        return "py"
+    if p.endswith(".go"):
+        return "go"
+    if pathlib.Path(p).suffix in _CODE_EXTS:
+        return "js"
+    return None
 
 
 def impact_tests(repo: str, paths: set[str], rev: str) -> set[str]:
@@ -169,7 +181,7 @@ def run_gate(repo: str, candidate: str, test_files: list[str],
         plan = []  # (file, key or None)
         hits = 0
         for f in test_files:
-            closure = python_closure(repo, candidate, f, listing)
+            closure = input_closure(repo, candidate, f, listing)
             key = None
             if closure is not None:
                 key = fact_key(key_cmd, f, [(p, blobs[p]) for p in sorted(closure)])

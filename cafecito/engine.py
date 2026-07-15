@@ -30,7 +30,7 @@ import time
 import uuid
 
 from .facts import FactsStore
-from .gate import _is_test_file, impact_tests, run_gate
+from .gate import _is_test_file, impact_tests, run_gate, test_family
 from .gitutil import git, git_rc
 from .regen import live_regen
 from .writeset import write_set
@@ -54,6 +54,10 @@ DEFAULT_CONFIG = {
     # test file in the tree, memoized by input closure — only tests whose
     # closure the landing touched actually execute (SPEC: verification facts).
     "gate_mode": "impact",
+    # full mode collects test files of the family the test_cmd can execute,
+    # derived from the command (pytest→py, vitest/jest/npx→js, go→go).
+    # Set explicitly (e.g. ["js"]) when the runner isn't recognizable.
+    "gate_families": [],
     "memoize": True,
     # a REGENERATED candidate that fails the gate gets this many fresh
     # reconciler attempts with the gate failure fed back (deterministic
@@ -73,6 +77,12 @@ DEFAULT_CONFIG = {
     "container_image": "",
     "container_runtime": "",
 }
+
+
+_RUNNER_FAMILY = {"pytest": "py", "python": "py", "tox": "py", "nox": "py",
+                  "vitest": "js", "jest": "js", "mocha": "js", "node": "js",
+                  "npx": "js", "npm": "js", "pnpm": "js", "yarn": "js",
+                  "bun": "js", "deno": "js", "go": "go", "gotestsum": "go"}
 
 
 class Engine:
@@ -254,6 +264,23 @@ class Engine:
                 if infl.pop(cs_id, None) is not None:
                     self._save_inflight(infl)
 
+    def _gate_families(self) -> set[str]:
+        """Test-file families full gate mode may collect: the explicit
+        config wins; otherwise derived from what the test_cmd can run.
+        Unrecognizable runners default to py — the pre-multi-language
+        behavior — rather than handing a runner files it can't execute."""
+        explicit = self.config.get("gate_families")
+        if explicit:
+            return set(explicit)
+        fams = set()
+        for tok in self.config["test_cmd"]:
+            base = pathlib.PurePosixPath(tok).name
+            for runner, fam in _RUNNER_FAMILY.items():
+                if base == runner or base.startswith(runner + "3") \
+                        or base.startswith(runner + "."):
+                    fams.add(fam)
+        return fams or {"py"}
+
     def _build_gate_land(self, cs_id, head, agent, title, tip, base,
                          symbols, files) -> dict:
         """Build the candidate and gate it with the lock RELEASED — this is
@@ -274,8 +301,9 @@ class Engine:
             if self.config.get("gate_mode") == "full":
                 listing = git(self.repo, "ls-tree", "-r", "--name-only",
                               candidate).splitlines()
+                fams = self._gate_families()
                 gate_files = sorted(p for p in listing if _is_test_file(p)
-                                    and p.endswith(".py"))
+                                    and test_family(p) in fams)
             else:
                 gate_files = sorted(impact_tests(
                     self.repo, set(files) | conflicted, candidate))
