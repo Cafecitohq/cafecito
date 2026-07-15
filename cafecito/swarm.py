@@ -18,9 +18,10 @@ import re
 import subprocess
 import time
 
-from .engine import Engine
+from .engine import Engine, key_path
 from .fleetstate import SwarmState
 from .gitutil import git, git_rc
+from .writeset import write_set
 
 # ------------------------------------------------------------------ planning ---
 
@@ -140,16 +141,30 @@ def _drifted(changed: list[str], declared: list[str]) -> list[str]:
     return sorted(set(changed) - set(declared))
 
 
-def _contain_drift(engine: Engine, agent: str, drift: list[str],
+def _drift_keys(wt: str, base: str, head: str, drift: list[str]) -> list[str]:
+    """Lease keys for the drifted files at the oracle's granularity: the
+    symbols the worker actually wrote, not the whole files. A sibling editing
+    a DIFFERENT symbol in the same file commutes — its lease must not
+    contend. Unanalyzable files keep their `file:` key, and any oracle
+    failure widens back to file granularity (uncertainty never narrows)."""
+    try:
+        symbols, _ = write_set(wt, base, head)
+    except Exception:  # noqa: BLE001 — containment must not kill the task
+        return [f"file:{p}" for p in drift]
+    drifted = set(drift)
+    keys = sorted(k for k in symbols if key_path(k) in drifted)
+    return keys or [f"file:{p}" for p in drift]
+
+
+def _contain_drift(engine: Engine, agent: str, keys: list[str],
                    wait_s: float = 120, poll_s: float = 3.0) -> str:
-    """Reserve the paths a worker touched beyond its assignment BEFORE its
-    changeset enters the pipeline. Nobody leased these files, so a sibling
+    """Reserve what a worker touched beyond its assignment BEFORE its
+    changeset enters the pipeline. Nobody leased these writes, so a sibling
     task may be editing them right now — reserving turns that merge-time
     collision into an intent-time wait, which is the whole point of leases.
     Leases stay advisory: past `wait_s` the changeset submits anyway (the
     engine owns correctness); what the swarm owns is not knowingly racing
     its own fleet. Returns a note for the task detail, empty when clean."""
-    keys = [f"file:{p}" for p in drift]
     deadline = time.time() + wait_s
     while True:
         lease = engine.reserve(keys=keys, agent=agent,
@@ -203,7 +218,8 @@ def _run_task(engine: Engine, state: SwarmState, goal: str, task: dict,
                                 for c in conflicts)
             contention = f"contention: {holders}"
 
-        wt = engine.sync(agent=agent, create_worktree=True)["worktree"]
+        synced = engine.sync(agent=agent, create_worktree=True)
+        wt, base_tip = synced["worktree"], synced["tip"]
         state.update(tid, "working",
                      detail=(contention or f"building in {wt}"))
 
@@ -231,7 +247,8 @@ def _run_task(engine: Engine, state: SwarmState, goal: str, task: dict,
         if drift:
             state.update(tid, "submitting",
                          detail=f"containing drift{drift_note}")
-            drift_note += _contain_drift(engine, agent, drift,
+            keys = _drift_keys(wt, base_tip, head, drift)
+            drift_note += _contain_drift(engine, agent, keys,
                                          wait_s=drift_wait)
 
         state.update(tid, "submitting", detail=f"head {head[:12]}{drift_note}")

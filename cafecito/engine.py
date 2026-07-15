@@ -85,6 +85,29 @@ _RUNNER_FAMILY = {"pytest": "py", "python": "py", "tox": "py", "nox": "py",
                   "bun": "js", "deno": "js", "go": "go", "gotestsum": "go"}
 
 
+def key_path(key: str) -> str:
+    """The repo path a lease key covers: `file:<path>` and the oracle's
+    `<lang>:<path>::<qual>` both map to <path>; anything else covers itself."""
+    if key.startswith("file:"):
+        return key[5:]
+    head, sep, _ = key.partition("::")
+    if sep and ":" in head:
+        return head.split(":", 1)[1]
+    return key
+
+
+def keys_overlap(a: str, b: str) -> bool:
+    """Granularity-aware lease overlap. Identical keys overlap; a `file:` key
+    overlaps every key on its path (symbol leases live inside it); two
+    distinct symbols in one file do NOT overlap — symbol-disjoint writers
+    commute, so their leases must not contend either."""
+    if a == b:
+        return True
+    if key_path(a) != key_path(b):
+        return False
+    return a.startswith("file:") or b.startswith("file:")
+
+
 class Engine:
     def __init__(self, repo: str):
         self.repo = str(pathlib.Path(repo).resolve())
@@ -185,7 +208,8 @@ class Engine:
                 {"key": k, "holder": v["agent"], "intent": v.get("intent", ""),
                  "expires_in_s": round(v["expires"] - time.time())}
                 for k, v in leases.items()
-                if k in keys and v["agent"] != agent
+                if v["agent"] != agent
+                and any(keys_overlap(k, q) for q in keys)
             ]
             if conflicts:
                 return {"granted": False, "conflicts": conflicts}
