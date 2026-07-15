@@ -204,7 +204,15 @@
       </div>
       <div class="feat">
         <div class="k">memoized verification</div>
-        <p>Every landing gates on the whole test suite — but verdicts are content-addressed by input closure, so only tests the landing actually touched execute. The rest inherit facts.</p>
+        <p>Every landing gates on the whole test suite — but verdicts are content-addressed by input closure, so only tests the landing actually touched execute. The rest inherit facts. Closures resolve Python, TypeScript/JS, <em>and</em> Go test inputs; anything the analysis can't see through simply runs.</p>
+      </div>
+      <div class="feat">
+        <div class="k">gates run sandboxed</div>
+        <p>The gate executes candidate code, so give it a boundary: <code>isolation: sandbox</code> denies the network and confines writes to the gate's own worktree (macOS today; containers experimental). Unavailable backends redden the gate — no silent fallback.</p>
+      </div>
+      <div class="feat">
+        <div class="k">drifting workers get contained</div>
+        <p>A swarm worker that edits beyond its assigned paths doesn't race its siblings: the drifted paths are leased before its changeset enters the pipeline, turning a merge-time collision into an intent-time wait.</p>
       </div>
       <div class="feat">
         <div class="k">reconciler retry-with-context</div>
@@ -242,7 +250,7 @@
   <section>
     <h2>It builds itself</h2>
     <p class="quote">cafecito's own test suite was written by uncoordinated agents and landed through cafecito — <b>including the fix for the first bug we found, which the engine landed while that code path was broken.</b></p>
-    <p style="color:var(--muted);font-size:14.5px;margin-top:16px">Since v0.1, <a href="https://github.com/cafecitohq/cafecito/blob/main/docs/building-itself.md">every feature has landed through cafecito itself</a>. Twenty-three self-hosted landings and counting: most commuted, the collisions were regenerated live, and nobody stared at a conflict marker.</p>
+    <p style="color:var(--muted);font-size:14.5px;margin-top:16px">Since v0.1, <a href="https://github.com/cafecitohq/cafecito/blob/main/docs/building-itself.md">every feature has landed through cafecito itself</a>. Thirty-seven self-hosted landings and counting: most commuted, the collisions were regenerated live, and nobody stared at a conflict marker. The only two escalations so far? The gate correctly refusing the sandbox feature it now runs inside, until that changeset fixed a latent bug in our own tests — <a href="https://github.com/cafecitohq/cafecito/blob/main/docs/building-itself.md">that story</a>.</p>
   </section>
 
   <footer>
