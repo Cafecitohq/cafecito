@@ -20,9 +20,11 @@ repo public.
       resolves when the repo goes public). Optional: upload the cast to asciinema.org for a
       scrubbable player. Re-record: `PATH=<venv-with-cafecito+pytest>/bin:$PATH asciinema rec
       --window-size 100x30 -c "DEMO_DELAY=1.4 ./examples/demo.sh" demo.cast`.
-- [ ] (Optional, security) Verify `cafeci.to` on the org: GitHub → org `Cafecitohq` settings →
-      Pages / Verified domains → add the `_github-pages-challenge-cafecitohq` TXT at Namecheap.
-      Prevents any other account from ever claiming the domain on Pages.
+- [x] (Optional, security) Verify `cafeci.to` on the org — done 2026-07-08
+      (`_github-pages-challenge-cafecitohq` TXT at Namecheap, `protected_domain_state:
+      verified` on the web repo's Pages API; covers immediate subdomains too). Note: this is
+      separate from the org-profile "Verified domains" system (`_gh-Cafecitohq-o` TXT, also
+      done) — GitHub runs two independent domain verifications.
 - [x] Add a SECURITY.md (`security@cafeci.to` already forwards) — done 2026-07-07.
 
 ## Launch day (in order)
