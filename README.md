@@ -57,7 +57,10 @@ Symbol-level write sets for **Python, TypeScript/JavaScript, and Go** (stdlib sc
 anything unanalyzable widens safely to file granularity); other languages land at file
 granularity today. **Verification facts:** with `gate_mode: full`, every landing gates on the whole test
 suite — but verdicts are content-addressed by input closure, so only tests the landing
-actually touched execute; the rest inherit facts. **Bare gate worktrees** get prepared by your
+actually touched execute; the rest inherit facts. Closures resolve **Python, TypeScript/
+JavaScript, and Go** test inputs (import graphs, runner configs, lockfiles; Go rides whole
+packages) — and anything the analysis can't see through statically (tsconfig `paths`,
+bundler aliases, workspaces, `go:embed`, …) simply runs the test instead of trusting a fact. **Bare gate worktrees** get prepared by your
 `--setup-cmd` (`npm ci`, `pip install -e .`) before tests run. **Gate isolation:** the gate
 executes candidate code, so `isolation: sandbox` (macOS) runs every test invocation with the
 network denied and file writes confined to the gate's own worktree; a `container` backend
