@@ -58,6 +58,23 @@ def sh(cwd, *args):
     subprocess.run(args, cwd=cwd, check=True, capture_output=True)
 
 
+def setup_repo(repo: pathlib.Path, pytest_py: str) -> None:
+    """Build the coffeeshop fixture and init the plane (shared with the
+    split-screen driver, examples/demo_swarm_split.sh)."""
+    for path, content in FILES.items():
+        f = repo / path
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(content)
+    sh(repo, "git", "init", "-q", "-b", "main")
+    sh(repo, "git", "add", "-A")
+    sh(repo, "git", "-c", "user.name=demo", "-c", "user.email=demo@cafeci.to",
+       "commit", "-q", "-m", "coffeeshop: initial")
+    subprocess.run(
+        [sys.executable, "-m", "cafecito.cli", "init", "--repo", str(repo),
+         "--test-cmd", f"{pytest_py} -m pytest -q -p no:cacheprovider"],
+        cwd=ROOT, check=True, capture_output=True)
+
+
 def main() -> int:
     pytest_py = os.environ.get("PYTEST_PY", "python3")
     agents = os.environ.get("AGENTS", "3")
@@ -66,18 +83,7 @@ def main() -> int:
     repo = work / "coffeeshop"
 
     try:
-        for path, content in FILES.items():
-            f = repo / path
-            f.parent.mkdir(parents=True, exist_ok=True)
-            f.write_text(content)
-        sh(repo, "git", "init", "-q", "-b", "main")
-        sh(repo, "git", "add", "-A")
-        sh(repo, "git", "-c", "user.name=demo", "-c", "user.email=demo@cafeci.to",
-           "commit", "-q", "-m", "coffeeshop: initial")
-        subprocess.run(
-            [sys.executable, "-m", "cafecito.cli", "init", "--repo", str(repo),
-             "--test-cmd", f"{pytest_py} -m pytest -q -p no:cacheprovider"],
-            cwd=ROOT, check=True, capture_output=True)
+        setup_repo(repo, pytest_py)
 
         print("\x1b[2J\x1b[H☕ cafecito swarm — one sentence in, a fleet out\n")
         print(f"goal: {GOAL[:90]}…\n")
@@ -122,4 +128,12 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 3 and sys.argv[1] == "--setup":
+        target = pathlib.Path(sys.argv[2])
+        setup_repo(target, os.environ.get("PYTEST_PY", "python3"))
+        print(target)
+        sys.exit(0)
+    if len(sys.argv) == 2 and sys.argv[1] == "--goal":
+        print(GOAL)
+        sys.exit(0)
     sys.exit(main())

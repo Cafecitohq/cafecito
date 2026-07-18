@@ -42,10 +42,12 @@ analyzed), so a fleet never knowingly races itself — and a sibling editing a d
 symbol in the same file doesn't wait, because symbol-disjoint writers commute. `watch`
 shows it happening live:
 
-![cafecito swarm — a real fleet, recorded unedited](https://raw.githubusercontent.com/cafecitohq/cafecito/main/examples/swarm-demo.gif)
+![cafecito swarm and watch, split-screen — a real fleet lands while the dashboard streams it](https://raw.githubusercontent.com/cafecitohq/cafecito/main/examples/swarm-split.gif)
 
-*(Real recording: one sentence → three agents → three gated landings → green main, 31s.
-Reproduce it: `python3 examples/demo_swarm.py`.)*
+*(Real split-screen recording, 35s unedited: `cafecito swarm` on the left — planner, three
+real agents, three gated landings, green main — while `cafecito watch` on the right streams
+the fleet, the leases, and the landed log live. Reproduce it:
+`./examples/demo_swarm_split.sh`.)*
 
 Since v0.1, **every feature of cafecito has been landed through cafecito** — the story
 (including the release we broke and what it taught us) is in
