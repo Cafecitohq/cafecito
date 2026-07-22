@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""cafecito MCP server v0.1 — stdio transport, zero dependencies.
+"""cafecito MCP server — stdio transport, zero dependencies.
 
 Exposes the SPEC §7 surface (sync / reserve / submit / status) over the Model
 Context Protocol so any MCP-capable agent — Claude Code, Cursor, Antigravity,
@@ -7,8 +7,12 @@ Claude Desktop — can coordinate through cafecito. One server process per agent
 session; engine state is shared via the repo's .cafecito/ directory with file
 locking, so any number of sessions coordinate safely.
 
-Register with Claude Code:
-  claude mcp add cafecito -- python3 /path/to/cafecito/mcp/server.py --repo /path/to/repo
+Register with Claude Code — commit a .mcp.json at the repo root so every
+session (any clone, any worktree, any machine) gets the plane:
+  {"mcpServers": {"cafecito": {"command": "cafecito",
+                               "args": ["serve", "--repo", "."]}}}
+or, single-machine local scope:
+  claude mcp add cafecito -- cafecito serve --repo /path/to/repo
 
 Protocol: newline-delimited JSON-RPC 2.0 on stdio (MCP stdio transport).
 Logs go to stderr only — stdout belongs to the protocol.
@@ -21,6 +25,7 @@ import json
 import subprocess
 import sys
 
+from . import __version__
 from .engine import Engine
 
 PROTOCOL_VERSION = "2024-11-05"
@@ -116,7 +121,7 @@ def handle(engine: Engine, method: str, params: dict):
         return {
             "protocolVersion": params.get("protocolVersion", PROTOCOL_VERSION),
             "capabilities": {"tools": {}},
-            "serverInfo": {"name": "cafecito", "version": "0.1.0"},
+            "serverInfo": {"name": "cafecito", "version": __version__},
         }
     if method == "ping":
         return {}

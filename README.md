@@ -23,8 +23,19 @@ gated, trailer-stamped, main green. Run it yourself: [`examples/demo.sh`](exampl
 ```sh
 pipx install cafecito          # PyPI · or git+https://github.com/cafecitohq/cafecito for main
 cafecito init --repo /path/to/your/repo --test-cmd "python3 -m pytest -q"
-claude mcp add cafecito -- cafecito serve --repo /path/to/your/repo
 ```
+
+Then connect your agents. Commit a `.mcp.json` at the repo root so **every** session,
+clone, and worktree gets the plane (each person approves it once):
+
+```json
+{"mcpServers": {"cafecito": {"command": "cafecito", "args": ["serve", "--repo", "."]}}}
+```
+
+Just you, one machine? `claude mcp add cafecito -- cafecito serve --repo /path/to/your/repo`
+works too — but it registers only the exact directory you run it from: worktrees, other
+clones, and teammates won't see it, and sessions without the plane quietly fall back to
+committing around it.
 
 **Or skip the wiring and summon the fleet directly:**
 

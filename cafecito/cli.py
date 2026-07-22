@@ -62,7 +62,12 @@ def cmd_init(args) -> int:
     print(f"  tip           : {st['tip'][:12]}")
     print(f"  test command  : {' '.join(eng.config['test_cmd'])}")
     print(f"  require signal: {eng.config.get('require_signal', False)}")
-    print(f"\nconnect an agent:\n  claude mcp add cafecito -- cafecito serve --repo {eng.repo}")
+    print("\nconnect agents — commit a .mcp.json at the repo root so every session,")
+    print("clone, and worktree gets the plane:")
+    print('  {"mcpServers": {"cafecito": {"command": "cafecito",'
+          ' "args": ["serve", "--repo", "."]}}}')
+    print(f"or, single-machine local scope:\n"
+          f"  claude mcp add cafecito -- cafecito serve --repo {eng.repo}")
     return 0
 
 

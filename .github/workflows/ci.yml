@@ -24,7 +24,33 @@ jobs:
         run: |
           python -m pip -q install -e . pytest
           cafecito version
-      - name: unit tests (82, no network, no LLM)
+      - name: unit tests (no network, no LLM)
         run: python -m pytest -q -p no:cacheprovider cafecito/tests
       - name: engine smoke, regeneration leg skipped (no claude CLI in CI)
         run: python -m cafecito.tests.smoke --no-regen --pytest-python "$(which python)"
+
+  # The plane must never trail main: direct-to-main commits bypass the landing
+  # gate, and a stale cafecito/main means the next landing builds on history the
+  # plane never saw. Red here = someone forgot `advance` (see CLAUDE.md ritual).
+  plane-sync:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: cafecito/main must be at or ahead of main
+        run: |
+          if ! git fetch -q origin cafecito/main 2>/dev/null; then
+            echo "no cafecito/main on origin — plane not initialized here; skipping"
+            exit 0
+          fi
+          if git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD; then
+            echo "plane in sync: cafecito/main is at or ahead of main"
+          else
+            echo "::error::cafecito/main trails main — commits bypassed the plane."
+            echo "Catch the plane up, then push both refs together:"
+            echo "  python3 -m cafecito.cli advance --repo ."
+            echo "  git push origin main cafecito/main"
+            exit 1
+          fi

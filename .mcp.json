@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "cafecito": {
+      "command": "python3",
+      "args": ["-m", "cafecito.cli", "serve", "--repo", "."]
+    }
+  }
+}
