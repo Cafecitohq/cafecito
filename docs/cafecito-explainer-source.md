@@ -185,13 +185,16 @@ building internal agent infrastructure.
   repo, and every number in this document regenerates from `phase0/` and `bench/`. If you
   get different numbers on your repos, the authors want the data.
 
-**Install (three commands, ~2 minutes):**
+**Install (two commands, ~1 minute):**
 
 ```sh
-pipx install git+https://github.com/cafecitohq/cafecito
-cafecito init --repo /path/to/your/repo --test-cmd "python3 -m pytest -q"
-claude mcp add cafecito -- cafecito serve --repo /path/to/your/repo
+pipx install cafecito
+cd /path/to/your/repo && cafecito init
 ```
+
+`init` detects your gate command from the repo, writes a checked-in `.mcp.json` so every
+session and worktree finds the plane, and installs a post-commit hook that keeps the tip
+following commits made outside it.
 
 Any MCP-capable agent (Claude Code, Cursor, Antigravity, and others) then coordinates
 through four tools: `sync`, `reserve`, `submit`, `status`. Humans drive it from the shell:

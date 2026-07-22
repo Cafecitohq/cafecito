@@ -1,6 +1,6 @@
 """The cafecito command line.
 
-  cafecito init      set up the control plane on a repo
+  cafecito init      apply the plane to a repo: gate, MCP registration, hook
   cafecito serve     run the MCP server on stdio (what agents connect to)
   cafecito submit    land a committed changeset from the shell
   cafecito status    tip, counts, recent landings, active leases
@@ -23,8 +23,10 @@ import sys
 import time
 
 from . import __version__
-from .engine import Engine
+from .engine import DEFAULT_CONFIG, Engine
 from .mcp_server import serve
+from .onboard import (detect_project, install_post_commit_hook,
+                      write_mcp_registration)
 
 
 def _engine(args) -> Engine:
@@ -32,8 +34,27 @@ def _engine(args) -> Engine:
 
 
 def cmd_init(args) -> int:
+    """One command from a fresh repo to a working plane: configure the gate,
+    register the MCP server, install the tip-following hook."""
     eng = Engine(args.repo)
+    config_existed = (eng.state_dir / "config.json").exists()
     changed = False
+    detected = None
+
+    # Detection fills what the operator didn't state, and never overwrites a
+    # plane someone already configured (re-running init must be safe).
+    default_gate = eng.config["test_cmd"] == DEFAULT_CONFIG["test_cmd"]
+    if not args.test_cmd and (default_gate or args.redetect):
+        detected = detect_project(eng.repo)
+        if detected["test_cmd"]:
+            eng.config["test_cmd"] = detected["test_cmd"]
+            eng.config["gate_families"] = detected["gate_families"]
+            if detected["setup_cmd"] and not eng.config.get("setup_cmd"):
+                eng.config["setup_cmd"] = detected["setup_cmd"]
+            for pat, cmd in (detected["generated"] or {}).items():
+                eng.config.setdefault("generated", {}).setdefault(pat, cmd)
+            changed = True
+
     if args.branch:
         eng.config["branch"] = args.branch
         changed = True
@@ -53,21 +74,54 @@ def cmd_init(args) -> int:
             return 2
         eng.config.setdefault("generated", {})[pat] = shlex.split(cmd)
         changed = True
-    if changed:
+    if changed or not config_existed:
         (eng.state_dir / "config.json").write_text(json.dumps(eng.config, indent=1))
         eng = Engine(args.repo)  # re-read; branch ref follows on next landing
+
     st = eng.status(limit=1)
-    print(f"cafecito initialized on {eng.repo}")
+    print(f"cafecito {__version__} on {eng.repo}")
     print(f"  landed branch : {eng.config['branch']}")
     print(f"  tip           : {st['tip'][:12]}")
-    print(f"  test command  : {' '.join(eng.config['test_cmd'])}")
-    print(f"  require signal: {eng.config.get('require_signal', False)}")
-    print("\nconnect agents — commit a .mcp.json at the repo root so every session,")
-    print("clone, and worktree gets the plane:")
-    print('  {"mcpServers": {"cafecito": {"command": "cafecito",'
-          ' "args": ["serve", "--repo", "."]}}}')
-    print(f"or, single-machine local scope:\n"
-          f"  claude mcp add cafecito -- cafecito serve --repo {eng.repo}")
+    print(f"  gate command  : {' '.join(eng.config['test_cmd'])}")
+    if detected and detected["test_cmd"]:
+        print(f"                  detected {detected['language']} — "
+              f"{'; '.join(detected['evidence'])}")
+        if detected.get("also_found"):
+            print(f"                  also present: "
+                  f"{', '.join(detected['also_found'])} "
+                  f"(override with --test-cmd)")
+    if eng.config.get("setup_cmd"):
+        print(f"  setup command : {' '.join(eng.config['setup_cmd'])}")
+
+    if not args.no_mcp:
+        verdict, detail = write_mcp_registration(eng.repo)
+        note = {"created": "written — commit it so every clone gets the plane",
+                "updated": "cafecito added alongside your other servers",
+                "present": "already registered",
+                "conflict": detail}[verdict]
+        print(f"  mcp server    : .mcp.json {note}")
+    if not args.no_hook:
+        verdict, detail = install_post_commit_hook(eng.repo)
+        note = {"installed": "post-commit — the tip follows commits made "
+                             "outside the plane",
+                "present": "post-commit already installed",
+                "skipped": detail, "conflict": detail}[verdict]
+        print(f"  advance hook  : {note}")
+
+    # A gate that collects nothing lands everything unverified. Say so.
+    if detected is not None and not detected["test_cmd"]:
+        print("\n  ! no test runner detected — the gate has no signal and every"
+              "\n    landing would be unverified. Set one with"
+              "\n      cafecito init --test-cmd \"<your test command>\""
+              "\n    and consider --require-signal to refuse blind landings.")
+    elif detected is not None and detected["test_files"] == 0:
+        print(f"\n  ! {detected['language']} project with 0 test files — the gate"
+              f"\n    will report no signal until tests exist. The first thing to"
+              f"\n    land in a repo like this is test coverage.")
+
+    print("\nnext: restart your agent session (or approve the server when asked),")
+    print("then agents coordinate through sync / reserve / submit / status.")
+    print("check anytime with: cafecito doctor")
     return 0
 
 
@@ -152,10 +206,18 @@ def main(argv: list[str] | None = None) -> int:
     def common(p):
         p.add_argument("--repo", default=".", help="repository path (default: .)")
 
-    p = sub.add_parser("init", help="set up the control plane on a repo")
+    p = sub.add_parser("init", help="apply the plane to a repo (detects, "
+                                    "registers, installs the hook)")
     common(p)
     p.add_argument("--branch", help="landed branch name (default cafecito/main)")
-    p.add_argument("--test-cmd", help='gate command, e.g. "python3 -m pytest -q"')
+    p.add_argument("--test-cmd", help='gate command, e.g. "python3 -m pytest -q"'
+                                      " (default: detected from the repo)")
+    p.add_argument("--redetect", action="store_true",
+                   help="re-run gate detection over an existing config")
+    p.add_argument("--no-mcp", action="store_true",
+                   help="don't write .mcp.json (agents won't find the plane)")
+    p.add_argument("--no-hook", action="store_true",
+                   help="don't install the post-commit advance hook")
     p.add_argument("--require-signal", action="store_true",
                    help="refuse landings with no test signal")
     p.add_argument("--setup-cmd", help='prepare gate worktrees, e.g. "npm ci"')

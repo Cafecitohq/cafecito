@@ -22,20 +22,33 @@ gated, trailer-stamped, main green. Run it yourself: [`examples/demo.sh`](exampl
 
 ```sh
 pipx install cafecito          # PyPI · or git+https://github.com/cafecitohq/cafecito for main
-cafecito init --repo /path/to/your/repo --test-cmd "python3 -m pytest -q"
+cd your-repo && cafecito init  # that's it
 ```
 
-Then connect your agents. Commit a `.mcp.json` at the repo root so **every** session,
-clone, and worktree gets the plane (each person approves it once):
+`init` reads your repo and reports what it did — no flags in the common case:
 
-```json
-{"mcpServers": {"cafecito": {"command": "cafecito", "args": ["serve", "--repo", "."]}}}
+```
+cafecito 0.15.0 on /Users/you/your-repo
+  landed branch : cafecito/main
+  tip           : 6712cbaeb828
+  gate command  : npm test --silent
+                  detected js — package.json scripts.test = 'vitest run'; 34 test file(s)
+  setup command : npm ci
+  mcp server    : .mcp.json written — commit it so every clone gets the plane
+  advance hook  : post-commit — the tip follows commits made outside the plane
 ```
 
-Just you, one machine? `claude mcp add cafecito -- cafecito serve --repo /path/to/your/repo`
-works too — but it registers only the exact directory you run it from: worktrees, other
-clones, and teammates won't see it, and sessions without the plane quietly fall back to
-committing around it.
+It detects your gate (pytest / npm test / go test / cargo test, including an app in a
+subdirectory), writes a **checked-in `.mcp.json`** so every session, clone, and worktree
+finds the plane, and installs a post-commit hook so commits made *without* the plane still
+move its tip. Override anything: `--test-cmd`, `--redetect`, `--no-mcp`, `--no-hook`.
+`cafecito doctor` re-checks all of it — including whether your gate can actually collect
+tests, because a gate that collects nothing lands everything unverified.
+
+Commit `.mcp.json` and your teammates get the plane on their next session (each approves
+it once). `claude mcp add cafecito -- cafecito serve --repo .` still works for a
+single machine, but it binds to one directory: worktrees, other clones, and teammates
+won't see it, and sessions without the plane quietly commit around it.
 
 **Or skip the wiring and summon the fleet directly:**
 

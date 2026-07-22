@@ -15,11 +15,23 @@ import subprocess
 import time
 
 from . import isolation
-from .engine import Engine
+from .engine import _RUNNER_FAMILY, Engine
 from .facts import MAX_FACTS
 from .gitutil import git_rc
+from .onboard import detect_project, hook_installed, mcp_registered
 
 OK, WARN, ERR = "ok", "warn", "error"
+
+
+def _family_of(test_cmd: list[str]) -> str:
+    """Which ecosystem's tests this gate command can actually run."""
+    for tok in test_cmd:
+        base = tok.rsplit("/", 1)[-1]
+        for runner, fam in _RUNNER_FAMILY.items():
+            if base == runner or base.startswith(runner + "3") \
+                    or base.startswith(runner + "."):
+                return fam
+    return ""
 
 
 def _check(name: str, status: str, detail: str = "") -> dict:
@@ -86,6 +98,41 @@ def collect_checks(repo: str) -> list[dict]:
         checks.append(_check("test_cmd", OK, argv0))
     else:
         checks.append(_check("test_cmd", ERR, f"{argv0!r} not executable"))
+
+    # An executable runner is not a verifying gate: pytest in a JS repo exits
+    # 5 (nothing collected) and every landing sails through as no-signal.
+    detected = detect_project(eng.repo)
+    fam = _family_of(eng.config.get("test_cmd") or [])
+    if detected["language"] and fam and detected["language"] != fam \
+            and detected["test_files"]:
+        checks.append(_check("gate signal", ERR,
+                             f"gate runs {fam} but this looks like a "
+                             f"{detected['language']} project "
+                             f"({detected['test_files']} test files) — "
+                             f"run `cafecito init --redetect`"))
+    elif detected["test_files"] == 0:
+        checks.append(_check("gate signal", WARN,
+                             "no test files found — landings will report "
+                             "no signal (land test coverage first)"))
+    else:
+        checks.append(_check("gate signal", OK,
+                             f"{detected['test_files']} "
+                             f"{detected['language']} test file(s)"))
+
+    if mcp_registered(eng.repo):
+        checks.append(_check("mcp server", OK, ".mcp.json registers cafecito"))
+    else:
+        checks.append(_check("mcp server", WARN,
+                             "no .mcp.json — agent sessions won't find the "
+                             "plane and will commit around it "
+                             "(`cafecito init` writes it)"))
+
+    if hook_installed(eng.repo):
+        checks.append(_check("advance hook", OK, "post-commit installed"))
+    else:
+        checks.append(_check("advance hook", WARN,
+                             "not installed — commits made outside the plane "
+                             "strand the tip (`cafecito init` installs it)"))
 
     mode = eng.config.get("isolation", "none")
     iso_err = isolation.unavailable(mode, eng.config.get("container_image", ""),

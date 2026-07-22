@@ -108,8 +108,8 @@ verdict `landed`, two verification facts inherited from the escalated attempt, m
 ## Try it on your repo
 
 ```sh
-pipx install git+https://github.com/cafecitohq/cafecito
-cafecito init --repo . --test-cmd "python3 -m pytest -q"
+pipx install cafecito
+cd your-repo && cafecito init                  # detects your gate, registers the plane
 cafecito swarm "your goal here" --agents 3     # or: cafecito ingest, for your open PRs
 cafecito watch                                  # and watch it land
 ```
