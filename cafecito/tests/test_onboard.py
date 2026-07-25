@@ -10,8 +10,9 @@ import subprocess
 
 import pytest
 
-from cafecito.onboard import (detect_project, hook_installed,
-                              install_post_commit_hook, mcp_registered,
+from cafecito.onboard import (ci_workflow_present, detect_project,
+                              hook_installed, install_post_commit_hook,
+                              mcp_registered, write_ci_workflow,
                               write_mcp_registration)
 
 
@@ -171,6 +172,71 @@ def test_hook_advances_the_tip_on_a_real_commit(repo):
                           capture_output=True, text=True).stdout.strip()
     assert head != start
     assert Engine(str(repo))._tip() == head
+
+
+PY_CONFIG = {"branch": "cafecito/main", "gate_families": ["py"],
+             "test_cmd": ["python3", "-m", "pytest", "-q"], "setup_cmd": []}
+
+
+def test_ci_workflow_created_with_both_jobs(repo):
+    write(repo, "pyproject.toml", "[project]\nname='x'\n")
+    verdict, path = write_ci_workflow(str(repo), PY_CONFIG)
+    assert verdict == "created"
+    body = (repo / ".github/workflows/cafecito.yml").read_text()
+    # The two jobs: the project's gate and the plane-sync guard.
+    assert "name: cafecito" in body
+    assert "gate:" in body and "plane-sync:" in body
+    assert "python3 -m pytest -q" in body          # gate = the plane's own gate
+    assert "actions/setup-python@v5" in body        # toolchain for the language
+    assert "merge-base --is-ancestor" in body       # the drift check itself
+    assert "git fetch -q origin cafecito/main" in body
+    assert ci_workflow_present(str(repo))
+
+
+def test_ci_gate_command_is_the_configured_gate(repo):
+    """CI must run the same command the plane lands on — not a guessed one."""
+    cfg = dict(PY_CONFIG, test_cmd=["pytest", "-x", "tests/"])
+    write_ci_workflow(str(repo), cfg)
+    body = (repo / ".github/workflows/cafecito.yml").read_text()
+    assert "run: pytest -x tests/" in body
+
+
+def test_ci_install_uses_configured_setup_cmd(repo):
+    """A configured setup_cmd is authoritative — the same prep gate worktrees
+    get. The generator must not invent its own install for js."""
+    cfg = {"branch": "cafecito/main", "gate_families": ["js"],
+           "test_cmd": ["npm", "test", "--silent"],
+           "setup_cmd": ["npm", "ci", "--prefix", "app"]}
+    write_ci_workflow(str(repo), cfg)
+    body = (repo / ".github/workflows/cafecito.yml").read_text()
+    assert "npm ci --prefix app" in body
+    assert "actions/setup-node@v4" in body
+
+
+def test_ci_deploy_branch_follows_current_branch(repo):
+    subprocess.run(["git", "checkout", "-q", "-b", "trunk"], cwd=repo, check=True)
+    write_ci_workflow(str(repo), PY_CONFIG)
+    body = (repo / ".github/workflows/cafecito.yml").read_text()
+    assert "branches: [trunk]" in body
+    assert "at or ahead of trunk" in body
+
+
+def test_ci_workflow_left_alone_on_rerun(repo):
+    write_ci_workflow(str(repo), PY_CONFIG)
+    path = repo / ".github/workflows/cafecito.yml"
+    edited = path.read_text() + "\n# operator's own edit\n"
+    path.write_text(edited)
+    verdict, _ = write_ci_workflow(str(repo), PY_CONFIG)
+    assert verdict == "present"
+    assert path.read_text() == edited          # edits survive
+
+
+def test_ci_workflow_refuses_to_clobber_a_foreign_file(repo):
+    p = write(repo, ".github/workflows/cafecito.yml", "name: someone-elses\n")
+    verdict, detail = write_ci_workflow(str(repo), PY_CONFIG)
+    assert verdict == "conflict"
+    assert p.read_text() == "name: someone-elses\n"
+    assert not ci_workflow_present(str(repo))
 
 
 def test_hook_stays_out_of_the_way_on_feature_branches(repo):

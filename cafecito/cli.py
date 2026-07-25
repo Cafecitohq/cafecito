@@ -26,7 +26,7 @@ from . import __version__
 from .engine import DEFAULT_CONFIG, Engine
 from .mcp_server import serve
 from .onboard import (detect_project, install_post_commit_hook,
-                      write_mcp_registration)
+                      write_ci_workflow, write_mcp_registration)
 
 
 def _engine(args) -> Engine:
@@ -107,6 +107,13 @@ def cmd_init(args) -> int:
                 "present": "post-commit already installed",
                 "skipped": detail, "conflict": detail}[verdict]
         print(f"  advance hook  : {note}")
+    if args.ci:
+        verdict, detail = write_ci_workflow(eng.repo, eng.config)
+        note = {"created": f"{detail} — test gate + plane-sync guard; "
+                           "review the version pins",
+                "present": "already generated (delete it to regenerate)",
+                "conflict": detail}[verdict]
+        print(f"  ci workflow   : {note}")
 
     # A gate that collects nothing lands everything unverified. Say so.
     if detected is not None and not detected["test_cmd"]:
@@ -218,6 +225,9 @@ def main(argv: list[str] | None = None) -> int:
                    help="don't write .mcp.json (agents won't find the plane)")
     p.add_argument("--no-hook", action="store_true",
                    help="don't install the post-commit advance hook")
+    p.add_argument("--ci", action="store_true",
+                   help="scaffold .github/workflows/cafecito.yml — your test "
+                        "gate plus a plane-sync drift guard")
     p.add_argument("--require-signal", action="store_true",
                    help="refuse landings with no test signal")
     p.add_argument("--setup-cmd", help='prepare gate worktrees, e.g. "npm ci"')

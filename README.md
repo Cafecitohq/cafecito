@@ -45,6 +45,11 @@ move its tip. Override anything: `--test-cmd`, `--redetect`, `--no-mcp`, `--no-h
 `cafecito doctor` re-checks all of it — including whether your gate can actually collect
 tests, because a gate that collects nothing lands everything unverified.
 
+Add `--ci` and it scaffolds `.github/workflows/cafecito.yml` too: your test gate (generated
+from the plane's own config, so CI runs the command the plane lands on) plus a **plane-sync
+guard** that reddens when `cafecito/main` trails `main` — the CI-visible signal that a commit
+bypassed the plane. It's left alone on re-run, so your edits and version pins survive.
+
 Commit `.mcp.json` and your teammates get the plane on their next session (each approves
 it once). `claude mcp add cafecito -- cafecito serve --repo .` still works for a
 single machine, but it binds to one directory: worktrees, other clones, and teammates
