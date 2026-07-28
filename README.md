@@ -2,8 +2,15 @@
 
 [![ci](https://github.com/cafecitohq/cafecito/actions/workflows/ci.yml/badge.svg)](https://github.com/cafecitohq/cafecito/actions/workflows/ci.yml) [![PyPI](https://img.shields.io/pypi/v/cafecito)](https://pypi.org/project/cafecito/)
 
-**An integration control plane for AI agent fleets.**
-*Prove independence when you can. Re-derive when you can't. Never resolve a conflict.*
+**Your AI agents write code faster than they can merge it.**
+
+Point several coding agents at one repository and merging becomes the traffic jam: they line
+up, re-test against each other, and stall. cafecito clears it — independent work lands in
+parallel, real collisions are rewritten automatically from both sides' intent, and everything
+still passes your tests before it ships.
+
+*An integration control plane for AI agent fleets. Prove independence when you can. Re-derive
+when you can't. Never resolve a conflict.*
 
 > **Status: pre-1.0 — a working single-repo control plane** (current version: see
 > [releases](https://github.com/cafecitohq/cafecito/releases)). The physics is validated
@@ -28,7 +35,7 @@ cd your-repo && cafecito init  # that's it
 `init` reads your repo and reports what it did — no flags in the common case:
 
 ```
-cafecito 0.15.0 on /Users/you/your-repo
+cafecito 0.16.0 on /Users/you/your-repo
   landed branch : cafecito/main
   tip           : 6712cbaeb828
   gate command  : npm test --silent
@@ -82,38 +89,48 @@ Since v0.1, **every feature of cafecito has been landed through cafecito** — t
 (including the release we broke and what it taught us) is in
 [docs/building-itself.md](docs/building-itself.md).
 
-Any MCP-capable agent then coordinates through four tools: `sync` (get the landed tip or a
+Any MCP-capable agent then coordinates through five tools: `sync` (get the landed tip or a
 ready worktree), `reserve` (advisory leases on symbols before starting work), `submit` (land a
-committed changeset), `status`. Commuting changesets land immediately; collisions are
-regenerated from both intents by a reconciler; **every** landing passes a real test gate; main
-is materialized as a normal git branch (`cafecito/main`). Agents never rebase and never see a
-conflict marker. Humans drive it from the shell: `cafecito submit | status | log | advance` —
-or keep opening ordinary GitHub PRs and let `cafecito ingest` land them through the plane.
-Symbol-level write sets for **Python, TypeScript/JavaScript, and Go** (stdlib scanners —
-anything unanalyzable widens safely to file granularity); other languages land at file
-granularity today. **Verification facts:** with `gate_mode: full`, every landing gates on the whole test
-suite — but verdicts are content-addressed by input closure, so only tests the landing
-actually touched execute; the rest inherit facts. Closures resolve **Python, TypeScript/
-JavaScript, and Go** test inputs (import graphs, runner configs, lockfiles; Go rides whole
-packages) — and anything the analysis can't see through statically (tsconfig `paths`,
-bundler aliases, workspaces, `go:embed`, …) simply runs the test instead of trusting a fact. **Bare gate worktrees** get prepared by your
-`--setup-cmd` (`npm ci`, `pip install -e .`) before tests run. **Gate isolation:** the gate
-executes candidate code, so `isolation: sandbox` (macOS) runs every test invocation with the
-network denied and file writes confined to the gate's own worktree; a `container` backend
-(docker/podman, `--network=none`) ships experimental. Unavailable backends redden the gate —
-never a silent fallback to unisolated runs. Facts are keyed by isolation mode, so a green
-minted with the network open can't satisfy a sandboxed gate. **Generated files** (lockfiles etc.)
-skip merging *and* the reconciler:
-declare `cafecito init --generated "package-lock.json=npm install --package-lock-only"` and
-conflicts re-run the generator against the merged sources — in our TypeScript corpus that
-was 58 of 60 real conflicts. Prove it locally: `python3 -m cafecito.tests.smoke`.
+committed changeset), `status`, and `swarm`. Commuting changesets land immediately; collisions
+are regenerated from both intents by a reconciler; **every** landing passes a real test gate;
+main is materialized as a normal git branch (`cafecito/main`). Agents never rebase and never
+see a conflict marker. Humans drive it from the shell: `cafecito submit | status | log |
+advance` — or keep opening ordinary GitHub PRs and let `cafecito ingest` land them through
+the plane.
+
+What's underneath:
+
+- **Symbol-level write sets** for Python, TypeScript/JavaScript, and Go — stdlib scanners, no
+  parser dependencies. Anything unanalyzable widens safely to file granularity; other
+  languages land at file granularity today.
+- **Verification facts.** With `gate_mode: full` every landing gates on the whole suite, but
+  verdicts are content-addressed by input closure, so only tests the landing actually touched
+  execute — the rest inherit facts. Closures resolve Python, TS/JS, and Go inputs (import
+  graphs, runner configs, lockfiles; Go rides whole packages). Anything the analysis can't see
+  through statically — tsconfig `paths`, bundler aliases, workspaces, `go:embed` — simply runs
+  the test instead of trusting a fact.
+- **Gate isolation.** The gate executes candidate code, so `isolation: sandbox` (macOS) runs
+  every test invocation with the network denied and writes confined to the gate's own
+  worktree; a `container` backend (docker/podman, `--network=none`) ships experimental.
+  Unavailable backends redden the gate — never a silent fallback to an unisolated run. Facts
+  are keyed by isolation mode, so a green minted with the network open can't satisfy a
+  sandboxed gate.
+- **Prepared worktrees.** `--setup-cmd` (`npm ci`, `pip install -e .`) runs before tests in
+  the gate's bare worktrees.
+- **Generated files** (lockfiles etc.) skip merging *and* the reconciler: declare
+  `cafecito init --generated "package-lock.json=npm install --package-lock-only"` and
+  conflicts re-run the generator against the merged sources — in our TypeScript corpus that
+  was 58 of 60 real conflicts.
+
+Prove it locally: `python3 -m cafecito.tests.smoke`.
 
 ## The problem
 
-Run five coding agents against one repo and you'll watch them gridlock: the first merge to
-main forces every other agent to rebase, rerun tests, and rejoin the queue. Merge queues
-serialize integration, so fleet throughput is capped at `1 / CI-duration` no matter how many
-agents you run — and CI spend grows quadratically as everyone re-tests everyone else's rebases.
+Point five coding agents at one repo and they stop behaving like five agents. The first one to
+land forces the rest to rebuild on top of it: pull the new code, re-run their tests, get back
+in line. Because a merge queue admits one change at a time, it doesn't matter how many agents
+you run — the fleet lands no faster than a single CI run (`1 / CI-duration`), and the CI bill
+grows quadratically as everyone re-tests against everyone else's landings.
 
 The bottleneck isn't git's storage; it's three assumptions from the human era:
 
