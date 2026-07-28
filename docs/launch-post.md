@@ -1,20 +1,24 @@
-# 97% of concurrent code changes don't conflict. Your merge queue serializes 100% of them.
+# Your AI agents write code faster than they can merge it
 
-*Published 2026-07-07 · every number in this post is reproducible from
+*Published 2026-07-07 · revised 2026-07-28 (framing rewritten in plainer language; facts
+brought up to v0.16 — see [What's shipped since launch](#whats-shipped-since-launch)) ·
+every number in this post is reproducible from
 [the repo](https://github.com/cafecitohq/cafecito).*
 
 ---
 
-Run five coding agents against one repository and watch them gridlock. The first one to merge
-forces the other four to rebase, rerun their tests, and rejoin the queue. Run thirty and the
-queue becomes the product: your fleet writes code in minutes and spends hours waiting to land
-it, while your CI bill grows quadratically — every landing re-validates everyone still in
-flight.
+Point five coding agents at one repository and they stop behaving like five agents. The
+first one to land forces the other four to rebuild on top of it: pull the new code, re-run
+their tests, get back in line. Point thirty at it and the line *is* the product — your
+fleet writes code in minutes, then spends hours waiting for permission to ship it, while
+the CI bill grows quadratically, because every landing re-validates everyone still waiting.
 
-We measured how much of that waiting is necessary. The answer is almost none of it, and the
-tool that comes out of that measurement is called **cafecito**. It's open source, Apache-2.0,
-and it landed its own test suite — written by uncoordinated agents — through its own pipeline
-before we wrote this post.
+All that waiting looks like the price of safety. We measured how much of it actually buys
+you anything. The answer is: almost none of it.
+
+The tool that came out of that measurement is called **cafecito**. It's open source,
+Apache-2.0, and it landed its own test suite — written by uncoordinated agents — through
+its own pipeline before we wrote this post.
 
 ## The measurement
 
@@ -50,26 +54,30 @@ Two things we had to get right to trust these numbers:
   serialized 19–43% of those pairs needlessly. The parallelism is real even under contention;
   you just need a finer lens than "same file".
 
-## The three exits
+## What happens when two changes collide
 
 cafecito is built on one economic observation: agent fleets invert the cost model of
 integration. Generating code is nearly free; verification and coherence are the scarce
 resources. Once regenerating code costs pennies, *merging text is the wrong operation* —
 and resolving conflicts by hand is a human-era ritual.
 
-So in cafecito, no collision is ever "resolved." Every changeset takes one of three exits:
+So in cafecito, nothing is ever "resolved." Every changeset takes one of three exits:
 
-- **Commute** — write sets provably disjoint (97% of the time): land in parallel, no rebase,
-  and under memoized verification, no re-testing of things that didn't change.
-- **Regenerate** — a true collision: a fresh reconciler agent re-derives the colliding
-  regions from *both changes' intents*, and the result must pass the landing gate. Nobody
-  edits conflict markers. On every genuine conflict we could validate — human corpus and
-  agent corpus — regeneration produced a state where **both sides' test suites stayed green
-  in 14 of 16 cases.**
-- **Escalate** — the remaining 2 of 16, and they're the system working. Example: two agents
-  independently assigned "add `__repr__`" chose different formats, each with a test asserting
-  its exact output. The acceptance criteria contradict; no merge can satisfy both; a human
-  must choose. cafecito's job is to catch that, not paper over it.
+- **They touch different code → both land at once.** The write sets are provably disjoint,
+  which is the case ~97% of the time. Both land in parallel, neither waits, and under
+  memoized verification, tests that couldn't have been affected don't re-run. The term for
+  it: the changes *commute*.
+- **They touch the same code → an agent rewrites it.** A real collision. Instead of handing
+  a person a tangle to sort out, a fresh reconciler agent re-derives the overlapping region
+  from *both changes' intents*, and the result only ships if it passes the landing gate.
+  Nobody edits a conflict marker. On every genuine conflict we could validate — human corpus
+  and agent corpus — this produced a state where **both sides' test suites stayed green in 14
+  of 16 cases.** cafecito *regenerates* the overlap rather than resolving it.
+- **They want opposite things → a human decides.** The remaining 2 of 16, and they're the
+  system working. Example: two agents independently assigned "add `__repr__`" chose different
+  formats, each with a test asserting its exact output. The acceptance criteria contradict;
+  no version of the code satisfies both; a person must choose. cafecito's job is to catch
+  that, not paper over it. It *escalates*.
 
 One result mattered more than we expected: we scored regenerations two ways, with a cheap
 line-incorporation heuristic and with real dual test-suite execution. The heuristic was wrong
@@ -79,7 +87,7 @@ That sentence is load-bearing in the architecture.
 
 ## MergeBench: a real burst, landed for real
 
-We replayed the 33-agent fleet through three integration strategies. The operations are real —
+We replayed the 33-agent fleet through four integration strategies. The operations are real —
 measured per-changeset CI, real merges, live regeneration against accumulated main, a test
 gate on every landing — and the schedules are computed from those measured durations.
 
@@ -89,11 +97,14 @@ At a projected 10-minute full-suite CI:
 |---|---|---|
 | serial merge queue | 5.50 h | 93.5 h |
 | file locking | 3.03 h | 29.7 h |
+| speculative queue, unlimited window | 1.83 h | 43.3 h |
 | **cafecito** | **1.37 h** | **16.2 h** |
 
 The serial line grows with fleet size forever; cafecito's steps only when the conflict graph
 forces a new wave. The compute line is the one your CFO cares about: quadratic versus
-near-linear.
+near-linear. We modeled the speculative queue *generously* — free conflict discovery, offline
+resolution — and it still loses on both axes at fleet conflict density, because speculation
+buys wall-clock by spending compute on branches it will throw away.
 
 And the landing wasn't simulated: 30 of 33 changesets landed automatically (7 via live
 regeneration), the 3 escalations were exactly the contradictory/duplicate cases a human
@@ -118,37 +129,75 @@ creation). The fix was landed *through cafecito while that code path was broken*
 path didn't depend on it. The engine's first real landing was its own bugfix. The log is in
 [DOGFOOD.md](../DOGFOOD.md), findings and all.
 
+That has held ever since: **every feature in every release since v0.1 has landed through
+cafecito itself** — 46 self-hosted landings and counting, most commuting, the collisions
+regenerated live. The only two escalations were the landing gate correctly refusing the
+sandbox feature it now runs inside, until that same changeset fixed a latent bug in our own
+tests. The story, including a release we broke and what it taught us, is in
+[building-itself.md](building-itself.md).
+
+## What's shipped since launch
+
+This post was written at v0.1. The physics above hasn't changed; the tool around it has:
+
+- **Symbol-level write sets for Python, TypeScript/JavaScript, and Go** (plus JSON key
+  paths), from stdlib-only scanners. Anything unanalyzable widens safely to whole-file
+  granularity — the oracle only chooses parallelism, so uncertainty is always safe.
+- **Wave-parallel landing.** Gates run with the lock released; a changeset whose base moved
+  under it rebases and re-gates, which is nearly free because verification facts are inherited.
+- **Memoized verification.** Every landing can gate on the whole suite, but verdicts are
+  content-addressed by input closure, so only tests the landing actually touched execute.
+  Closures resolve Python, TS/JS, and Go inputs; anything the analysis can't see through
+  statically simply runs the test instead of trusting a fact.
+- **A fleet in one command.** `cafecito swarm "…"` plans a goal into independent tasks, runs
+  the agents in parallel, and lands the results; `cafecito watch` is the live dashboard.
+- **PRs land through the plane.** `cafecito ingest` takes ordinary GitHub PRs through the
+  same gate. Its first production input was the pull request documenting it.
+- **Gates run isolated.** The gate executes candidate code, so `isolation: sandbox` denies
+  the network and confines writes to the gate's own worktree (macOS today; a container
+  backend ships experimental). An unavailable backend reddens the gate — never a silent
+  fallback to an unisolated run.
+- **One-command setup.** `cafecito init` detects your gate, registers the plane so every
+  clone and agent session finds it, and installs a hook so commits made *outside* the plane
+  still move its tip. `--ci` scaffolds a GitHub Actions workflow: your test gate plus a
+  guard that goes red the moment a commit bypasses the plane.
+
 ## Try it
 
-v0.1 is a single-repo control plane, zero dependencies beyond git and Python:
+Zero dependencies beyond git and Python:
 
 ```sh
-pipx install git+https://github.com/cafecitohq/cafecito
-cafecito init --repo /path/to/your/repo --test-cmd "python3 -m pytest -q"
-claude mcp add cafecito -- cafecito serve --repo /path/to/your/repo
+pipx install cafecito
+cd your-repo && cafecito init --ci
 ```
 
-Any MCP-capable agent — Claude Code, Cursor, Antigravity — gets four tools: `sync`,
-`reserve` (advisory leases, so contention is discovered *before* work is wasted), `submit`,
-`status`. Main is materialized as a normal git branch; humans and CI see ordinary commits;
-agents never rebase and never see a conflict marker.
+That's it — `init` detects how your project tests itself, writes a checked-in `.mcp.json` so
+every clone and worktree finds the plane, installs the tip-following hook, and (with `--ci`)
+generates the workflow. Any MCP-capable agent — Claude Code, Cursor, Antigravity — then gets
+the tools: `sync`, `reserve` (advisory leases, so contention is discovered *before* work is
+wasted), `submit`, `status`, `swarm`. Main is materialized as a normal git branch; humans and
+CI see ordinary commits; agents never rebase and never see a conflict marker.
 
 ## Honesty box
 
 The regeneration corpus is small (n=16 validated conflicts — genuine ones are rare, which is
 itself the finding). The fleet experiment is one repo, hotspot-biased by design. The
-benchmark baseline is a classic serial queue; speculative queues improve utilization but
-still serialize semantics. The 10-minute CI is a projection over measured schedules. v0.1
-serializes landing bookkeeping (correctness identical to the parallel design; throughput work
-pending), speaks symbol-level Python (file-level for everything else), and has process-level
-sandboxing. Every number in this post regenerates from `phase0/` and `bench/` in the repo —
-if you get different numbers on your repos, we want the data.
+10-minute CI is a projection over measured schedules, and the speculative-queue baseline is a
+model, generously specified, not a live system we ran. Symbol granularity covers Python,
+TS/JS, and Go; everything else lands at file granularity today. Sandboxed gates are macOS
+today — the container backend is built but not yet proven against a live runtime. cafecito is
+still a **single-repo** control plane: webhooks and a hosted multi-repo app are not built.
+Every number in this post regenerates from `phase0/` and `bench/` in the repo — if you get
+different numbers on your repos, we want the data.
 
 ## What we're asking for
 
 - **Run experiment A on your repo.** One command, no API keys. We especially want
   merge-commit workflows outside scientific Python.
-- **tree-sitter write-set extractors** for TypeScript, Go, Rust.
+- **Symbol scanners for more languages** — Rust, Ruby, Java, C#. The bar is unusual: stdlib
+  only, no new runtime dependencies, and conservative by construction — returning "I don't
+  know" must always be safe, because the landing gate, not the scanner, is what keeps main
+  green.
 - **Argue with [SPEC.md](../SPEC.md).** The changeset format, lease semantics, and landed-log
   design are drafts; holes poked now are cheap.
 
