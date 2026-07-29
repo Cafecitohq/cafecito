@@ -17,7 +17,9 @@ when you can't. Never resolve a conflict.*
 > ([phase0/](phase0/), [bench/](bench/)); the engine, MCP server, fleet (`swarm`/`watch`),
 > PR gateway (`ingest`), memoized gates, and wave-parallel landing all run for real — and
 > every feature since v0.1 [landed through cafecito itself](docs/building-itself.md).
-> Not yet: multi-repo, webhooks/hosted App. Sharp edges remain.
+> The webhook receiver + GitHub App (`cafecito gateway`) ships as of v0.19.0 — event-driven
+> instead of polling, but still **one process, one repo, local state**. Not yet: multi-repo
+> planes, hosted state, a console. Sharp edges remain.
 
 ![Three agents land in parallel: two commute, one collision is regenerated live, main ends green](https://raw.githubusercontent.com/cafecitohq/cafecito/main/examples/demo.gif)
 
@@ -35,7 +37,7 @@ cd your-repo && cafecito init  # that's it
 `init` reads your repo and reports what it did — no flags in the common case:
 
 ```
-cafecito 0.16.0 on /Users/you/your-repo
+cafecito 0.19.0 on /Users/you/your-repo
   landed branch : cafecito/main
   tip           : 6712cbaeb828
   gate command  : npm test --silent
@@ -177,9 +179,9 @@ market category it replaces (see [SPEC.md §1.1](SPEC.md)).
 |---|---|---|
 | [phase0/](phase0/) | Falsification experiments A (commutativity rate) and B (regenerative-merge success rate) on real repos | **active** |
 | [SPEC.md](SPEC.md) | Protocol: changesets, leases, landed log, verification facts, MCP surface | v0 — all surfaces implemented |
-| [cafecito/](cafecito/) | The product: oracle (py/ts/js/go/json write sets), engine (commute/regenerate/escalate, memoized gates, wave-parallel admission), MCP server, `swarm`/`watch`/`ingest`, CLI — `pip install`able, zero dependencies | **active** |
+| [cafecito/](cafecito/) | The product: oracle (py/ts/js/go/json write sets), engine (commute/regenerate/escalate, memoized gates, wave-parallel admission), MCP server, `swarm`/`watch`/`ingest`/`gateway`, CLI — `pip install`able, zero dependencies | **active** |
 | [sdk/](sdk/) | TypeScript / Python client SDKs | design |
-| [gateway/](gateway/) | Git gateway: materialized branch, `advance`, and PR ingestion (`cafecito ingest`, [proven on PR #1](https://github.com/Cafecitohq/cafecito/pull/1)); webhooks/hosted App pending | **shipped in cafecito/** |
+| [gateway/](gateway/) | Git gateway: materialized branch, `advance`, PR ingestion (`cafecito ingest`, [proven on PR #1](https://github.com/Cafecitohq/cafecito/pull/1)), and the webhook receiver + GitHub App (`cafecito gateway` — [setup guide](gateway/README.md)) | **shipped in cafecito/** |
 | [bench/](bench/) | MergeBench — a real 33-agent burst: 5.5h serial queue vs **1.37h** cafecito (10-min CI), 93.5 vs 16.2 CI-hours, landed for real with green main | **active** |
 | [PLAN.md](PLAN.md) | Full project plan, roadmap, and competitive analysis | living doc |
 

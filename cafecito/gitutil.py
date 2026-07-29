@@ -17,13 +17,19 @@ def git(repo: str, *args: str) -> str:
     return out
 
 
-def git_rc(repo: str, *args: str) -> tuple[int, str, str]:
-    """Run git in `repo`, return (exit_code, stdout, stderr). Never raises."""
+def git_rc(repo: str, *args: str, env: dict | None = None) -> tuple[int, str, str]:
+    """Run git in `repo`, return (exit_code, stdout, stderr). Never raises.
+
+    `env` exists so a caller can hand git an installation token through the
+    environment — `gh auth git-credential` reads GH_TOKEN from there, which
+    keeps the credential out of argv and out of the reflog. None means
+    inherit, which is what every other caller wants."""
     r = subprocess.run(
         ["git", "-C", repo, *args],
         capture_output=True,
         text=True,
         errors="replace",
+        env=env,
     )
     return r.returncode, r.stdout, r.stderr
 

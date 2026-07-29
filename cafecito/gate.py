@@ -92,7 +92,13 @@ def _run_setup(worktree: pathlib.Path, setup_cmd: list[str],
                timeout: int) -> str | None:
     """Prepare a bare worktree (npm ci, pip install, …). Runs with the REAL
     environment — installs need caches and network — unlike the tests, which
-    keep their restricted env. Returns an error string or None."""
+    keep their restricted env. Returns an error string or None.
+
+    It is also NEVER wrapped by isolation.wrap(): the boundary covers the test
+    command only. Setup is therefore the one part of the gate that executes
+    candidate code on the host — `npm ci` runs the candidate's pre/post-install
+    scripts, `pip install -e .` runs its setup.py — which is why the gateway
+    refuses to land fork PRs on a plane that has a setup_cmd."""
     try:
         r = subprocess.run(setup_cmd, cwd=worktree, capture_output=True,
                            text=True, timeout=timeout)
@@ -121,7 +127,9 @@ def run_gate(repo: str, candidate: str, test_files: list[str],
 
     Test invocations run under `isolation_mode` (see isolation.py); an
     unavailable backend reddens the gate rather than running unisolated.
-    Setup keeps the real environment either way — installs need network.
+    Setup is neither isolated nor scrubbed — installs need the real
+    environment and the network — so a tree you would not run `npm ci` in by
+    hand is not made safe by any isolation mode.
 
     Returns {green, seconds, summary, tests, memo?}. Empty test set is
     reported green with `no_signal: True` — landed, but flagged in the log.

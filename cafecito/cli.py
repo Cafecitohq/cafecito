@@ -8,6 +8,7 @@
   cafecito advance   follow out-of-band commits (move tip to a descendant)
   cafecito swarm     one goal in, a parallel fleet out: plan, build, land
   cafecito ingest    land open GitHub PRs through the plane (the gateway)
+  cafecito gateway   land GitHub PRs as they arrive (webhook receiver)
   cafecito watch     live dashboard of the fleet and the landed log
   cafecito doctor    environment + control-plane health checks
   cafecito gc        clean stale worktrees, leases, in-flight entries
@@ -199,6 +200,11 @@ def cmd_ingest(args) -> int:
     return run_ingest(args)
 
 
+def cmd_gateway(args) -> int:
+    from .gateway import run_gateway
+    return run_gateway(args)
+
+
 def cmd_watch(args) -> int:
     from .watch import run_watch
     return run_watch(args)
@@ -309,6 +315,41 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--no-report", action="store_true",
                    help="do not comment/label on GitHub (dry reporting)")
     p.set_defaults(fn=cmd_ingest)
+
+    p = sub.add_parser("gateway", help="receive GitHub App webhooks and land "
+                                       "PRs as they arrive")
+    common(p)
+    p.add_argument("--github", help="owner/repo (default: derived from origin)")
+    p.add_argument("--bind", help="listen address (default 127.0.0.1; put a "
+                                  "tunnel or reverse proxy in front)")
+    p.add_argument("--port", type=int, help="listen port (default 8787)")
+    p.add_argument("--path", help="webhook path (default /webhook)")
+    p.add_argument("--app-client-id", help="GitHub App client id (Iv23li…)")
+    p.add_argument("--installation-id", type=int,
+                   help="the installation this gateway serves")
+    p.add_argument("--private-key", help="the App's .pem — keep it outside "
+                                         "the worktree, mode 600")
+    p.add_argument("--secret-file", help="file holding the webhook secret "
+                                         "(or set CAFECITO_WEBHOOK_SECRET; "
+                                         "there is no --secret flag)")
+    p.add_argument("--workers", type=int,
+                   help="concurrent landings (default 1)")
+    p.add_argument("--sweep", type=int,
+                   help="seconds between catch-up sweeps (default 900)")
+    p.add_argument("--no-sweep", action="store_true",
+                   help="don't re-offer PRs whose deliveries were missed")
+    p.add_argument("--no-report", action="store_true",
+                   help="do not comment/label on GitHub (dry reporting)")
+    p.add_argument("--land-forks", action="store_true",
+                   help="land fork PRs too — their head is attacker-authored "
+                        "code the gate will run; refused unless isolation is "
+                        "set and setup_cmd is empty")
+    p.add_argument("--allow-public-bind", action="store_true",
+                   help="permit a non-loopback bind (there is no TLS here)")
+    p.add_argument("--check", action="store_true",
+                   help="verify key, secret, permissions and identity, then "
+                        "exit without binding")
+    p.set_defaults(fn=cmd_gateway)
 
     p = sub.add_parser("watch", help="live fleet dashboard")
     common(p)

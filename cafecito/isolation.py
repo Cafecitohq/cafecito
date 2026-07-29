@@ -18,6 +18,13 @@ Fail closed: an unavailable backend must redden the gate, never silently
 fall back to unisolated execution — the engine enforces this via
 `unavailable()` before each real run. Landings whose verification facts are
 all inherited execute nothing, so they need no boundary.
+
+What is NOT covered, stated here because it is the load-bearing limit: only
+the TEST command is wrapped. `setup_cmd` runs on the host, with the real
+environment and the real network, because installs need both — and `npm ci`
+or `pip install -e .` executes the candidate's own scripts. No mode here
+makes a tree safe whose setup step you would not run by hand, which is why
+`cafecito gateway` refuses `--land-forks` while a setup_cmd is configured.
 """
 
 from __future__ import annotations
