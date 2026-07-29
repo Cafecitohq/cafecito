@@ -189,10 +189,27 @@ and landed its own release.
 Two caveats, because this is the weakest-evidenced section in the post. The incident was in
 a private repo, so it is the one story here you cannot check; what is public is the
 mechanism, in [`cafecito/onboard.py`](../cafecito/onboard.py) and the README, and the fixes,
-which are commits. And we never went back and ran `init` there. That repo's main now sits 80
-commits ahead of its plane. Three commits of drift wasn't an anomaly — it was the first three
-of eighty, and it kept growing for exactly as long as none of the mechanisms above were
-installed. It is the counterfactual for this whole section, and it is ours.
+which are commits. And for eight days we did not go back and run `init` there, so the drift
+kept growing: three commits was not an anomaly, it was the first three of **eighty**, and it
+grew for exactly as long as none of the mechanisms above were installed. That was the
+counterfactual for this whole section, and it was ours.
+
+We fixed it the day this post went up — publishing the number is what made leaving it
+indefensible — and the fix immediately paid for itself by breaking two things in our own
+detection. `doctor` announced "no test files found" at a repo holding seven of them: its
+suite runs as `npm run qa`, there is no `test` script, and we had been reporting *no runner
+configured* as *no tests exist*. Those have different fixes, and ours sent the operator off
+to write tests they already had. Then the same run counted 25 test files where the repo has
+7 — the extra 18 were copies inside `.claude/worktrees`, full checkouts from parallel agent
+sessions, inflating every tally by the number of live worktrees and skewing the score that
+picks your gate language. The users most likely to have those worktrees are ours. Both are
+fixed; both were found by pointing the tool at a repo we actually work in, which is the only
+reason this section exists at all.
+
+One thing the catch-up does not do is verify anything. `advance` absorbs history, it does not
+gate it: those eighty commits are in the plane's tip now, and not one of them ever ran
+through a gate. The tip is honest again; the eighty are not retroactively verified, and no
+mechanism can make them so.
 
 ## Failure four: no model has ever heard of us
 
@@ -412,8 +429,9 @@ test signal at all, which means the gate verified nothing on those, and six of t
 documentation: one shipped two files of the package itself. A self-hosted log is also a
 sample of one repository's habits — our changesets are disjoint partly because a small team
 with leases plans them that way. The drift incident in failure three is in a private repo
-you cannot inspect, and that repo is still 80 commits out of sync because we never applied
-our own fix to it. The `plane-sync` guard has never been observed reddening on a real
+you cannot inspect; its eighty commits of drift have now been absorbed, but absorbing is not
+gating and none of them were ever verified. The `plane-sync` guard has never been observed
+reddening on a real
 bypass; we know it works by reading it. Sandboxed gates are macOS today; the container
 backend is built but not proven against a live runtime. cafecito is still a single-repo
 control plane: webhooks and a hosted multi-repo app are not built. If you run this on your
