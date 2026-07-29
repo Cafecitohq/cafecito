@@ -10,9 +10,10 @@ import subprocess
 
 import pytest
 
-from cafecito.onboard import (ci_workflow_present, detect_project,
-                              hook_installed, install_post_commit_hook,
-                              mcp_registered, write_ci_workflow,
+from cafecito.onboard import (agent_instructions_present, ci_workflow_present,
+                              detect_project, hook_installed,
+                              install_post_commit_hook, mcp_registered,
+                              write_agent_instructions, write_ci_workflow,
                               write_mcp_registration)
 
 
@@ -176,6 +177,50 @@ def test_hook_advances_the_tip_on_a_real_commit(repo):
 
 PY_CONFIG = {"branch": "cafecito/main", "gate_families": ["py"],
              "test_cmd": ["python3", "-m", "pytest", "-q"], "setup_cmd": []}
+
+
+def test_agent_stanza_written_to_both_files(repo):
+    """No model has heard of cafecito, so the stanza is the only thing telling an
+    agent session the plane exists. It goes where agents actually read."""
+    verdict, _ = write_agent_instructions(str(repo), PY_CONFIG)
+    assert verdict == "written"
+    for name in ("CLAUDE.md", "AGENTS.md"):
+        body = (repo / name).read_text()
+        assert "## Landing changes (cafecito)" in body
+        assert "`submit`" in body
+        assert "cafecito/main" in body            # the configured landed branch
+    assert agent_instructions_present(str(repo))
+
+
+def test_agent_stanza_tells_agents_to_stop_when_the_plane_is_missing(repo):
+    """The line that converts a silent bypass into a visible signal — this is the
+    failure mode the stanza exists to prevent."""
+    write_agent_instructions(str(repo), PY_CONFIG)
+    body = (repo / "CLAUDE.md").read_text()
+    assert "are not available in this session, say so and stop" in body
+
+
+def test_agent_stanza_appends_without_destroying_an_existing_file(repo):
+    existing = "# My project\n\nDon't touch this.\n"
+    write(repo, "CLAUDE.md", existing)
+    verdict, detail = write_agent_instructions(str(repo), PY_CONFIG)
+    assert verdict == "written" and "appended" in detail
+    body = (repo / "CLAUDE.md").read_text()
+    assert body.startswith(existing)              # original survives, verbatim
+    assert "## Landing changes (cafecito)" in body
+
+
+def test_agent_stanza_is_idempotent(repo):
+    write_agent_instructions(str(repo), PY_CONFIG)
+    first = (repo / "CLAUDE.md").read_text()
+    verdict, _ = write_agent_instructions(str(repo), PY_CONFIG)
+    assert verdict == "present"
+    assert (repo / "CLAUDE.md").read_text() == first   # no second copy appended
+
+
+def test_agent_stanza_names_a_custom_landed_branch(repo):
+    write_agent_instructions(str(repo), dict(PY_CONFIG, branch="plane/trunk"))
+    assert "plane/trunk" in (repo / "AGENTS.md").read_text()
 
 
 def test_ci_workflow_created_with_both_jobs(repo):

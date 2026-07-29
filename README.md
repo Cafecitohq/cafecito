@@ -43,14 +43,21 @@ cafecito 0.16.0 on /Users/you/your-repo
   setup command : npm ci
   mcp server    : .mcp.json written — commit it so every clone gets the plane
   advance hook  : post-commit — the tip follows commits made outside the plane
+  agent docs    : AGENTS.md written; stanza appended to CLAUDE.md — commit it so agent sessions know to land
 ```
 
 It detects your gate (pytest / npm test / go test / cargo test, including an app in a
 subdirectory), writes a **checked-in `.mcp.json`** so every session, clone, and worktree
 finds the plane, and installs a post-commit hook so commits made *without* the plane still
-move its tip. Override anything: `--test-cmd`, `--redetect`, `--no-mcp`, `--no-hook`.
-`cafecito doctor` re-checks all of it — including whether your gate can actually collect
-tests, because a gate that collects nothing lands everything unverified.
+move its tip. Override anything: `--test-cmd`, `--redetect`, `--no-mcp`, `--no-hook`,
+`--no-agents`. `cafecito doctor` re-checks all of it — including whether your gate can
+actually collect tests, because a gate that collects nothing lands everything unverified.
+
+It also writes a short **landing stanza into `CLAUDE.md` and `AGENTS.md`** (appended, never
+overwriting what's there). This matters more than it looks: cafecito postdates every model's
+training cutoff, so no agent has heard of it. The MCP tools tell a session *how* to land; the
+stanza is what tells it that it *should* — and to stop and say so if the tools are missing,
+rather than quietly committing around the plane.
 
 Add `--ci` and it scaffolds `.github/workflows/cafecito.yml` too: your test gate (generated
 from the plane's own config, so CI runs the command the plane lands on) plus a **plane-sync

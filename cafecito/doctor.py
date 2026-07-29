@@ -18,7 +18,8 @@ from . import isolation
 from .engine import _RUNNER_FAMILY, Engine
 from .facts import MAX_FACTS
 from .gitutil import git_rc
-from .onboard import detect_project, hook_installed, mcp_registered
+from .onboard import (agent_instructions_present, detect_project,
+                      hook_installed, mcp_registered)
 
 OK, WARN, ERR = "ok", "warn", "error"
 
@@ -133,6 +134,15 @@ def collect_checks(repo: str) -> list[dict]:
         checks.append(_check("advance hook", WARN,
                              "not installed — commits made outside the plane "
                              "strand the tip (`cafecito init` installs it)"))
+
+    if agent_instructions_present(eng.repo):
+        checks.append(_check("agent docs", OK,
+                             "landing stanza in CLAUDE.md / AGENTS.md"))
+    else:
+        checks.append(_check("agent docs", WARN,
+                             "no landing stanza — no model has heard of "
+                             "cafecito, so agents won't know to submit "
+                             "(`cafecito init` writes it)"))
 
     mode = eng.config.get("isolation", "none")
     iso_err = isolation.unavailable(mode, eng.config.get("container_image", ""),
