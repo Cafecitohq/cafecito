@@ -130,10 +130,14 @@ path didn't depend on it. The engine's first real landing was its own bugfix. Th
 [DOGFOOD.md](../DOGFOOD.md), findings and all.
 
 That has held ever since: **every feature in every release since v0.1 has landed through
-cafecito itself** — 46 self-hosted landings and counting, most commuting, the collisions
-regenerated live. The only two escalations were the landing gate correctly refusing the
-sandbox feature it now runs inside, until that same changeset fixed a latent bug in our own
-tests. The story, including a release we broke and what it taught us, is in
+cafecito itself** — 49 self-hosted landings and counting. Worth stating precisely, because
+it cuts against us: every one of those landings either commuted or merged cleanly. Our own
+changesets have been disjoint enough that **the reconciler has never once fired on this
+repo**. That's the commutativity thesis holding on real work, not evidence that regeneration
+works — the evidence for that is the corpora above, where 14 of 16 genuine conflicts
+regenerated with both test suites green. The only two escalations were the landing gate
+correctly refusing the sandbox feature it now runs inside, until that same changeset fixed a
+latent bug in our own tests. The story, including a release we broke and what it taught us, is in
 [building-itself.md](building-itself.md).
 
 ## What's shipped since launch

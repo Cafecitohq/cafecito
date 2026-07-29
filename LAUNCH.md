@@ -30,13 +30,18 @@ repo public.
 ## Launch day (in order)
 
 1. ✅ ~~Flip the code repo public:~~ done — `gh repo edit cafecitohq/cafecito --visibility public --accept-visibility-change-consequences`
-2. ✅ ~~Swap teaser → full site:~~ done — copy [docs/index.html](docs/index.html) into the `web` repo as
+2. ✅ ~~Swap teaser → full site:~~ done — copied `docs/index.html` into the `web` repo as
    `index.html` (its `github.com/cafecitohq/cafecito` links now resolve), commit, push. Pages
-   redeploys `cafeci.to` in ~1 min.
+   redeploys `cafeci.to` in ~1 min. *(2026-07-28: `docs/index.html` has since been deleted —
+   it was an unserved duplicate that drifted out of sync with the live site. The site's only
+   source is the `web` repo. Recover the original with `git show bf10714:docs/index.html`.)*
 3. ✅ ~~Verify:~~ done (site 200, all links 200, stranger-install works) — `curl -sI https://cafeci.to` → 200; click through GitHub / story / spec links.
 4. ⏳ **Publish the post (Victor):** the story is [docs/launch-post.md](docs/launch-post.md). Post to HN
-   with the title *"97% of concurrent code changes don't conflict. Your merge queue serializes
-   100% of them."* Link `cafeci.to`.
+   with the title *"Your AI agents write code faster than they can merge it."* Link `cafeci.to`.
+   *(2026-07-28: the original title — "97% of concurrent code changes don't conflict. Your merge
+   queue serializes 100% of them." — was retired after real clients reported they could not tell
+   what it meant. It was used for the 2026-07-08 HN submission, which is historical and cannot be
+   edited. Do not reuse it in any future post, deck, or video.)*
 5. **(Optional) PyPI:** `python3 -m build && twine upload dist/*` — name `cafecito` was free
    on 2026-07-06.
 

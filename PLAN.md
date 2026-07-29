@@ -101,7 +101,7 @@ An open-source **integration control plane** with three surfaces:
 
 | Component | Role | Innovation |
 |---|---|---|
-| Conflict oracle | Derives symbol-level read/write sets per changeset (tree-sitter parsing + import graph); decides commutativity | Turns "assume everything conflicts" into "prove independence"; falls back to file-level when analysis is uncertain |
+| Conflict oracle | Derives symbol-level read/write sets per changeset (stdlib-only scanners + import graph — tree-sitter was the original plan, reversed in build, see §4 Parsing); decides commutativity | Turns "assume everything conflicts" into "prove independence"; falls back to file-level when analysis is uncertain |
 | Lease service | Short-lived advisory reservations on symbols/paths, taken at intent time | Moves coordination from merge time (late, wasteful) to planning time (early, cheap) |
 | Landing planner | Schedules the changeset DAG; speculatively tests combinations ahead of confirmation (Uber SubmitQueue-style, generalized) | Throughput scales with available CI compute, not CI latency |
 | Test memoization | Content-addressed test results (Bazel-style hashing of inputs → verdict) | A rebase that doesn't change a test's input closure doesn't rerun it; kills the O(N) rerun tax |
@@ -139,7 +139,14 @@ disjoint symbols can still interfere behaviorally (shared global state, wire for
 - **Language:** Rust for the engine (perf, single static binary, credibility in infra OSS);
   TypeScript for SDK/MCP server and console.
 - **Storage:** landed log in Postgres + object store (content-addressed blobs); no custom DB.
-- **Parsing:** tree-sitter grammars for symbol extraction (start: TS/JS, Python, Go, Rust).
+- **Parsing:** ~~tree-sitter grammars for symbol extraction (start: TS/JS, Python, Go,
+  Rust).~~ **Reversed in build (2026-07):** symbol extraction ships as **stdlib-only
+  scanners** (`cafecito/spans.py`) covering Python, TS/JS, and Go. Zero runtime dependencies
+  turned out to be a product property worth more than parser precision — imprecision is safe
+  by construction because the oracle only chooses parallelism and any confusion widens to
+  file granularity, while the landing gate remains the safety mechanism. tree-sitter could
+  still replace the scanners later without changing a caller, but it is not the plan of
+  record and contributions must not introduce the dependency.
 - **Interop:** GitHub App for the wedge deployment; `git fetch` always works against the gateway.
 
 ## 5. Why now, and why this can be venture-scale

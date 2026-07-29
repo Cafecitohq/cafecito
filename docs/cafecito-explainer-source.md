@@ -14,7 +14,12 @@
 
 ## 1. The 30-second pitch
 
-97% of concurrent code changes don't conflict. Your merge queue serializes 100% of them.
+Your AI agents write code faster than they can merge it.
+
+Point several coding agents at one repository and merging becomes the traffic jam: they line
+up, re-test against each other, and stall. cafecito clears it — independent work lands in
+parallel, real collisions are rewritten automatically from both sides' intent, and everything
+still passes your tests before it ships.
 
 cafecito is a free, open-source (Apache-2.0) integration control plane for fleets of AI
 coding agents. It proves which changes are independent and lands them in parallel; when
@@ -160,6 +165,12 @@ executing the combined test suite, not assumed.**
 - There is a 34-second, unedited terminal recording on the site and README: three agents
   branch from the same commit; two commute and land in parallel; the third collides and is
   regenerated live by a reconciler; main ends green with trailer-stamped commits.
+- A second, 35-second split-screen recording shows a REAL fleet and its dashboard at once:
+  `cafecito swarm` on the left (one sentence → planner → three agents → three gated
+  landings) with `cafecito watch` streaming the leases and landed log on the right.
+- Self-hosting has held: **every feature in every release since v0.1 landed through
+  cafecito** — 49 landings and 2 escalations, both of which were the gate correctly refusing
+  a changeset until it fixed a latent bug in cafecito's own tests.
 
 ---
 
@@ -197,7 +208,7 @@ session and worktree finds the plane, and installs a post-commit hook that keeps
 following commits made outside it.
 
 Any MCP-capable agent (Claude Code, Cursor, Antigravity, and others) then coordinates
-through four tools: `sync`, `reserve`, `submit`, `status`. Humans drive it from the shell:
+through five tools: `sync`, `reserve`, `submit`, `status`, `swarm`. Humans drive it from the shell:
 `cafecito submit | status | log | advance`.
 
 **Zero-risk first step:** you don't even have to adopt it — run experiment A on your own
@@ -209,12 +220,20 @@ Everything starts at **https://cafeci.to**.
 
 ## 8. Honest limitations (say these out loud — credibility is the brand)
 
-- v0.1 is single-repo and runs on your laptop. Not yet: multi-repo, GitHub App, hosted
+- cafecito is single-repo and runs on your laptop. Not yet: multi-repo, GitHub App, hosted
   anything. Expect sharp edges.
 - The validated regeneration corpus is small (n=16) — genuine conflicts are rare, which is
   itself the finding.
-- Symbol-level analysis currently speaks Python; other languages fall back to file-level.
-  tree-sitter extractors for TypeScript, Go, and Rust are an open contribution area.
+- **Regeneration has never fired on cafecito's own repository.** Across 49 self-hosted
+  landings every changeset either commuted or merged cleanly. That is the commutativity
+  thesis holding on real work, but it means the evidence for regeneration is the corpora
+  (14 of 16 with both test suites green), not our own history. Say this precisely; the
+  overclaim is not worth it.
+- Symbol-level analysis speaks Python, TypeScript/JavaScript, and Go (plus JSON key paths);
+  everything else falls back to file granularity. Scanners for more languages are an open
+  contribution area — but the bar is **stdlib only, no new runtime dependencies**, so do
+  not ask for tree-sitter extractors: zero dependencies is a deliberate product property.
+- Sandboxed gates are macOS today; the container backend ships experimental.
 - The 10-minute CI figure is a projection computed over real measured schedules; the
   benchmark baseline is a classic serial queue.
 
@@ -231,8 +250,10 @@ Everything starts at **https://cafeci.to**.
 
 ## 10. Suggested narrative arc for slides / video
 
-1. **Hook:** "97% of concurrent code changes don't conflict. Your merge queue serializes
-   100% of them." (title stat + cafeci.to + creator credit)
+1. **Hook:** "Your AI agents write code faster than they can merge it." (+ cafeci.to +
+   creator credit). Do NOT open on the 97% statistic — it was the launch-era hook and real
+   viewers reported it was unintelligible; it belongs in the measurement beat below, with
+   its provenance, as evidence rather than as the opening line.
 2. **Pain:** an agent fleet gridlocked behind a merge queue; the quadratic CI bill.
 3. **Measurement:** 10 real repos, 1,465 concurrent pairs, 97.4% disjoint; only 0.1%
    genuine conflicts.
