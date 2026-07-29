@@ -102,6 +102,34 @@ def test_dependency_directories_are_not_scanned(repo):
 def test_empty_repo_detects_nothing(repo):
     d = detect_project(str(repo))
     assert d["language"] is None and d["test_cmd"] is None
+    assert d["orphan_tests"] == 0
+
+
+def test_tests_without_a_runner_are_reported_as_orphans(repo):
+    """Found in the wild: a repo with a real suite run by `npm run qa`, no
+    `test` script. Reporting that as "no test files found" sends the operator
+    to write tests they already have; the fix is --test-cmd."""
+    write(repo, "package.json", json.dumps({"scripts": {"qa": "node qa/run.mjs"}}))
+    for i in range(3):
+        write(repo, f"qa/{i}-thing.test.mjs", "")
+    d = detect_project(str(repo))
+    assert d["test_cmd"] is None          # still no gate — nothing can run them
+    assert d["orphan_tests"] == 3
+    assert d["orphan_family"] == "js"
+    assert "no runner is configured" in d["evidence"][0]
+
+
+def test_agent_worktrees_do_not_inflate_test_counts(repo):
+    """`.claude/worktrees/*` holds full repo copies; counting them multiplies
+    every tally by the number of live worktrees and skews language scoring."""
+    write(repo, "package.json", json.dumps({"scripts": {"test": "vitest run"}}))
+    write(repo, "src/a.test.ts", "")
+    for wt in ("alpha", "beta", "gamma"):
+        write(repo, f".claude/worktrees/{wt}/src/a.test.ts", "")
+        write(repo, f".claude/worktrees/{wt}/package.json",
+              json.dumps({"scripts": {"test": "vitest run"}}))
+    d = detect_project(str(repo))
+    assert d["test_files"] == 1           # not 4
 
 
 def test_mcp_registration_created_and_idempotent(repo):

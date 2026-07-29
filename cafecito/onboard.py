@@ -19,8 +19,12 @@ import stat
 
 from .gitutil import git_rc
 
-SKIP_DIRS = {".git", ".cafecito", "node_modules", "vendor", "dist", "build",
-             "target", "__pycache__", ".venv", "venv", ".tox", ".next",
+# `.claude` holds agent worktrees — full copies of the repo. Counting them
+# multiplies every test-file tally by the number of live worktrees, which skews
+# the language score that picks your gate. Our own users are the ones most
+# likely to have them.
+SKIP_DIRS = {".git", ".cafecito", ".claude", "node_modules", "vendor", "dist",
+             "build", "target", "__pycache__", ".venv", "venv", ".tox", ".next",
              ".pytest_cache", ".mypy_cache", "coverage", ".idea", ".vscode"}
 
 MCP_FILE = ".mcp.json"
@@ -202,12 +206,22 @@ def detect_project(repo: str) -> dict:
         })
 
     if not found:
+        # "No runner" and "no tests" are different diagnoses with different
+        # fixes, and conflating them sends the operator looking for the wrong
+        # problem: a repo whose suite runs under a non-standard script name
+        # (`npm run qa`) has plenty of tests and simply needs --test-cmd.
+        orphans = sum(counts.values())
+        fam = max(counts, key=lambda k: counts[k]) if orphans else ""
         return {"language": None, "test_cmd": None, "setup_cmd": [],
                 "gate_families": [], "generated": {}, "test_files": 0,
-                "evidence": ["no test runner detected"]}
+                "orphan_tests": orphans, "orphan_family": fam,
+                "evidence": [f"{orphans} {fam} test file(s) found, but no "
+                             f"runner is configured to execute them"]
+                if orphans else ["no test runner detected"]}
     best = max(found, key=lambda c: c["score"])
     best["also_found"] = [c["language"] for c in found
                           if c["language"] != best["language"]]
+    best.setdefault("orphan_tests", 0)
     return best
 
 

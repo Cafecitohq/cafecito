@@ -111,6 +111,13 @@ def collect_checks(repo: str) -> list[dict]:
                              f"{detected['language']} project "
                              f"({detected['test_files']} test files) — "
                              f"run `cafecito init --redetect`"))
+    elif detected["test_files"] == 0 and detected.get("orphan_tests"):
+        checks.append(_check("gate signal", WARN,
+                             f"{detected['orphan_tests']} "
+                             f"{detected['orphan_family']} test file(s) exist "
+                             f"but no runner is configured to execute them — "
+                             f"point the gate at them with "
+                             f"`cafecito init --test-cmd \"<command>\"`"))
     elif detected["test_files"] == 0:
         checks.append(_check("gate signal", WARN,
                              "no test files found — landings will report "

@@ -124,10 +124,18 @@ def cmd_init(args) -> int:
 
     # A gate that collects nothing lands everything unverified. Say so.
     if detected is not None and not detected["test_cmd"]:
-        print("\n  ! no test runner detected — the gate has no signal and every"
-              "\n    landing would be unverified. Set one with"
-              "\n      cafecito init --test-cmd \"<your test command>\""
-              "\n    and consider --require-signal to refuse blind landings.")
+        if detected.get("orphan_tests"):
+            print(f"\n  ! {detected['orphan_tests']} "
+                  f"{detected['orphan_family']} test file(s) are here, but no"
+                  f"\n    runner is configured to execute them — a suite under a"
+                  f"\n    non-standard script name won't be found. The gate has no"
+                  f"\n    signal until you point it at them:"
+                  f"\n      cafecito init --test-cmd \"<your test command>\"")
+        else:
+            print("\n  ! no test runner detected — the gate has no signal and every"
+                  "\n    landing would be unverified. Set one with"
+                  "\n      cafecito init --test-cmd \"<your test command>\""
+                  "\n    and consider --require-signal to refuse blind landings.")
     elif detected is not None and detected["test_files"] == 0:
         print(f"\n  ! {detected['language']} project with 0 test files — the gate"
               f"\n    will report no signal until tests exist. The first thing to"
