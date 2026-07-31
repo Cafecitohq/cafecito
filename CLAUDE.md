@@ -41,23 +41,19 @@ end of every session that changes strategy, architecture, decisions, or ships a 
 <!-- cafecito:begin: edit freely; delete this block to regenerate -->
 ## Landing changes (cafecito)
 
-This repo coordinates parallel agent work through **cafecito**. Changes reach the deploy
-branch by *landing* through the control plane — not by pushing.
+Changes reach `cafecito/main` through the **cafecito** control plane — by *landing*, not by
+pushing. Read-only work needs none of this.
 
-- **Start from the plane's tip.** Call the `sync` tool (or `cafecito sync`) and work from
-  the commit it returns, not from wherever the checkout happens to sit.
-- **Reserve before editing.** Call `reserve` with the symbols or files you are about to
-  change, so contention surfaces before the work is done instead of after it.
-- **Land with `submit`.** Commit your work, then submit the sha. Changesets that touch
-  different code land in parallel; real overlaps are regenerated automatically from both
-  sides' intent; contradictions come back to a human. Every landing runs the test gate.
-- **Don't push the deploy branch yourself.** The landed branch is `cafecito/main`, and `submit`
-  is what moves it. (In *this* repo the release ritual under "Versions & pushing" above is the
-  one documented exception — maintainer commits land on `main` directly and the post-commit
-  hook advances the tip. Feature work still goes through `submit`.)
-- **If the cafecito tools are not available in this session, say so and stop** rather than
-  committing around the plane. A bypassed commit strands the tip, and the next landing
-  builds on history the plane never saw.
+Before you edit, `sync` for your base and `reserve` the files or symbols you'll touch, so
+contention surfaces before the work is done. Then commit and `submit` the sha: separate
+changesets land in parallel, overlaps regenerate from both sides' intent, contradictions
+come back to a human, and every landing runs the gate. `cafecito status` shows the state.
 
-Check state any time with `cafecito status`, or `cafecito doctor` for a health check.
+If neither the cafecito tools nor the CLI are here, don't commit around the plane anyway —
+leave the work uncommitted or on a side branch and say so. A repo-specific exception (a
+release ritual, say) counts only if it is written down inside this block.
+
+In *this* repo the one written-down exception is the release ritual under
+"Versions & pushing": maintainer commits land on `main` directly and the
+post-commit hook advances the tip. Feature work still goes through `submit`.
 <!-- cafecito:end -->
