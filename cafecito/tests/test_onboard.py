@@ -188,9 +188,14 @@ def test_hook_advances_the_tip_on_a_real_commit(repo):
 
     hook = repo / ".git" / "hooks" / "post-commit"
     # The installed hook shells out to a `cafecito` on PATH; in-tree tests
-    # exercise the same contract through the module entry point.
-    hook.write_text(hook.read_text().replace(
-        "cafecito advance", "python3 -m cafecito.cli advance"))
+    # exercise the same contract through the module entry point. Both the
+    # invocation AND the `command -v cafecito` guard have to be redirected:
+    # replacing only the invocation left the test passing or failing on
+    # whether the developer happened to have cafecito installed, which is a
+    # test that reports the environment rather than the code.
+    hook.write_text(hook.read_text()
+                    .replace("command -v cafecito", "command -v git")
+                    .replace("cafecito advance", "python3 -m cafecito.cli advance"))
     env = dict(os.environ, PATH=os.environ.get("PATH", ""),
                PYTHONPATH=os.pathsep.join(
                    [os.getcwd(), os.environ.get("PYTHONPATH", "")]))
@@ -220,12 +225,35 @@ def test_agent_stanza_written_to_both_files(repo):
     assert agent_instructions_present(str(repo))
 
 
-def test_agent_stanza_tells_agents_to_stop_when_the_plane_is_missing(repo):
-    """The line that converts a silent bypass into a visible signal — this is the
-    failure mode the stanza exists to prevent."""
+def test_agent_stanza_forbids_committing_around_the_plane(repo):
+    """The line that converts a silent bypass into a visible signal — the failure
+    mode the stanza exists to prevent. It must stay harm-shaped: an earlier
+    draft said "don't move `cafecito/main` yourself", which `git commit` plus
+    `git push origin main` satisfies while being exactly the drift event."""
     write_agent_instructions(str(repo), PY_CONFIG)
     body = (repo / "CLAUDE.md").read_text()
-    assert "are not available in this session, say so and stop" in body
+    assert "don't commit around the plane" in body
+    # and it must say what to do instead of halting — a hard stop made 3 of 4
+    # measured tasks end in a blocking question to the human.
+    assert "uncommitted or on a side branch" in body
+    assert "stop" not in body.split("## Landing changes")[1]
+
+
+def test_agent_stanza_exempts_read_only_work(repo):
+    """Most sessions never commit. Without an explicit exemption the block taxes
+    every one of them — a measured run had an agent weighing it before answering
+    "what does this function do?"."""
+    write_agent_instructions(str(repo), PY_CONFIG)
+    assert "Read-only work needs none of this" in (repo / "CLAUDE.md").read_text()
+
+
+def test_agent_stanza_never_hardcodes_the_default_branch(repo):
+    """Regression: a rewrite once inlined `cafecito/main` as a literal, which
+    silently misnames the branch for every repo that passed --branch."""
+    write_agent_instructions(str(repo), dict(PY_CONFIG, branch="plane/trunk"))
+    body = (repo / "CLAUDE.md").read_text()
+    assert "plane/trunk" in body
+    assert "cafecito/main" not in body
 
 
 def test_agent_stanza_appends_without_destroying_an_existing_file(repo):

@@ -300,28 +300,35 @@ def agent_instructions(config: dict) -> str:
     No model has heard of cafecito — it postdates every training cutoff — so an
     agent session learns the plane exists from exactly two places: the MCP tool
     descriptions, and this stanza. The tools alone aren't enough: an agent that
-    doesn't know it *should* land will happily `git commit` around the plane."""
+    doesn't know it *should* land will happily `git commit` around the plane.
+
+    It loads into every session, so it is costed like a hot path. Measured
+    against four realistic tasks, the first version made 3 of 4 end in a
+    blocking question to the human — a one-word typo fix included — and sent
+    two of them to the shell to work out whether its stop rule had fired. The
+    driver was never length; it was a hard stop ("say so and stop") with an
+    ambiguous trigger, next to a release ritual it flatly contradicted. So:
+    read-only work is exempted in the first line, the failure case says what to
+    do instead of halting, and an exception counts only when written into this
+    block — a bounded carve-out, not a blanket yield to whatever the file
+    already said. The prohibition stays harm-shaped ("don't commit around the
+    plane"): scoping it to a branch name lets `git push origin main` through,
+    which is the drift event itself."""
     landed = config.get("branch", "cafecito/main")
     return f"""{AGENTS_BEGIN}: edit freely; delete this block to regenerate -->
 ## Landing changes (cafecito)
 
-This repo coordinates parallel agent work through **cafecito**. Changes reach the deploy
-branch by *landing* through the control plane — not by pushing.
+Changes reach `{landed}` through the **cafecito** control plane — by *landing*, not by
+pushing. Read-only work needs none of this.
 
-- **Start from the plane's tip.** Call the `sync` tool (or `cafecito sync`) and work from
-  the commit it returns, not from wherever the checkout happens to sit.
-- **Reserve before editing.** Call `reserve` with the symbols or files you are about to
-  change, so contention surfaces before the work is done instead of after it.
-- **Land with `submit`.** Commit your work, then submit the sha. Changesets that touch
-  different code land in parallel; real overlaps are regenerated automatically from both
-  sides' intent; contradictions come back to a human. Every landing runs the test gate.
-- **Don't push the deploy branch yourself.** The landed branch is `{landed}`, and `submit`
-  is what moves it.
-- **If the cafecito tools are not available in this session, say so and stop** rather than
-  committing around the plane. A bypassed commit strands the tip, and the next landing
-  builds on history the plane never saw.
+Before you edit, `sync` for your base and `reserve` the files or symbols you'll touch, so
+contention surfaces before the work is done. Then commit and `submit` the sha: separate
+changesets land in parallel, overlaps regenerate from both sides' intent, contradictions
+come back to a human, and every landing runs the gate. `cafecito status` shows the state.
 
-Check state any time with `cafecito status`, or `cafecito doctor` for a health check.
+If neither the cafecito tools nor the CLI are here, don't commit around the plane anyway —
+leave the work uncommitted or on a side branch and say so. A repo-specific exception (a
+release ritual, say) counts only if it is written down inside this block.
 {AGENTS_END}"""
 
 
