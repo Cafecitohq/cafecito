@@ -245,10 +245,58 @@ Two falsification experiments, both cheap, one of which no competitor has publis
 |---|---|
 | Oracle false-negatives (semantically coupled changes with disjoint symbols) | Speculative CI is always the landing gate; oracle only chooses parallelism. Track false-negative rate as a first-class metric. |
 | "Replacing git" adoption allergy | Never lead with that. Wedge is a merge queue for GitHub PRs; git gateway keeps every existing tool working. |
-| GitHub/Cursor ships this | They're anchored to human workflows and line-based merge; our speed, OSS community, and agent-native protocol are the counter. Being the *neutral* layer across agent vendors is a position none of them can take. |
+| GitHub/Cursor ships this | They're anchored to human workflows and line-based merge; our speed, OSS community, and agent-native protocol are the counter. Being the *neutral* layer across agent vendors is a position none of them can take. **— partially superseded 2026-08-24, see §9.1.** |
 | Conflict density too high in real repos (oracle rarely helps) | Phase 0 exists to falsify this cheaply. Leases also *reduce* conflict density by steering agents apart before work starts. |
 | Test suites too slow/flaky for speculation to pay off | Memoization pays off regardless; speculation degrades gracefully to a plain queue. Flake detection is a natural (and sellable) byproduct. |
 | Rust engine slows iteration early | Phase 1 wedge can be TS on the GitHub API; port hot paths to Rust when the landed-log becomes native (Phase 3). |
+
+### 9.1 Update 2026-08-24 — Cursor shipped Origin
+
+Cursor announced **Origin**, its own git forge ("a git forge for the agentic era"), on
+2026-06-17 and shipped early beta to all paid plans on 2026-08-17. Shipped: Origin-hosted
+repos, two-way real-time GitHub sync including PRs, pull requests with checks, agents
+co-located with code, CI/deploy integrations (Vercel, Depot, Buildkite). Positioned but not
+confirmed shipped: stacked PRs, merge queues, machine-readable bulk agent review,
+programmatic forge access.
+
+**The first clause of the original mitigation has expired.** "Anchored to human workflows
+and line-based merge" is no longer true of Cursor. Their engineering writing describes a
+merge queue in which a neutral third-party agent resolves conflicts impartially on all
+parties' behalf — conceptually the same family as regenerative merge. Assume this row's
+first sentence is dead and do not repeat it in any external material.
+
+**The second clause got stronger.** A Cursor-owned forge is definitionally not neutral.
+Neither GitHub nor the model labs will adopt it, and no agent vendor can be the neutral
+plane across its competitors. Origin is a forge you migrate to; cafecito is a control plane
+that runs on the repo and the agents a team already has.
+
+**Two differentiators survive contact, and both sharpened:**
+
+1. **The gate.** Cursor published throughput (peak ~1,000 commits/second, up from
+   ~1,000/hour) and a conflict count (<1,000 over four hours, versus 70,000+ on the prior
+   system before they paused it). Neither is a correctness number, and no test gate on
+   landings appears anywhere in the public account. cafecito's invariant — every landing
+   runs the gate, clean textual merges included — is now the claim a funded competitor
+   visibly does not make.
+2. **Proof of independence vs. prevention by architecture.** Their stated lesson was
+   decomposing the codebase and blocking megafile growth so conflicts do not arise. That is
+   restructuring the repo to make parallelism safe. Symbol-level commutativity makes
+   parallelism safe on the repo as it already is (97.4% of concurrent human pairs; 97.0%
+   symbol vs 80.7% file under contention).
+
+**Consequences, in order:**
+- Stop leading with "merge queue." It is now a category Cursor is buying search demand in
+  (observed: paid Google ads on the non-brand phrase keyword "agentic pr workflow",
+  2026-08-23). Lead with the gate and the published evidence.
+- A head-to-head correctness benchmark is now the highest-leverage piece of content we own.
+  They shipped throughput without correctness; MergeBench and 14/16 semantic PASS answer a
+  question they left open, against a named system. Phase 0 already commits to publishing
+  this regardless of outcome.
+- This argues against the harness/IDE detour and for the hosted GitHub App. Cursor's play is
+  to own the forge; the counter is to be the layer that works on the forge teams already use.
+- Category validation is now free. An entrant with Cursor's data has publicly confirmed that
+  agent-scale landing is a real problem — normally the most expensive thing to establish.
+
 
 ## 10. Immediate next steps
 
