@@ -18,6 +18,7 @@ import tempfile
 import time
 
 from .gitutil import show
+from .model import call as model_call
 
 MAX_REGIONS = 8
 MAX_PROMPT = 80_000
@@ -124,11 +125,13 @@ def _test_defs(src: str) -> set[str]:
 
 
 def run_reconciler(prompt: str, model: str, timeout: int = 300) -> str:
-    r = subprocess.run(["claude", "-p", "--model", model],
-                       input=prompt, capture_output=True, text=True, timeout=timeout)
-    if r.returncode != 0:
-        raise RuntimeError(f"claude CLI failed: {r.stderr.strip()[:200]}")
-    return r.stdout
+    """The reconciler's model seam (monkeypatched in tests).
+
+    Routed through the provider seam so a machine holding an API key can
+    regenerate without Anthropic's CLI installed — regenerative merge is the
+    differentiator, and it used to be gated on an undeclared dependency.
+    """
+    return model_call(prompt, model=model, timeout=timeout).text
 
 
 def live_regen(repo: str, base: str, tip: str, head: str, conflicted: set[str],

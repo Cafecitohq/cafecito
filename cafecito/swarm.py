@@ -21,6 +21,7 @@ import time
 from .engine import Engine, key_path
 from .fleetstate import SwarmState
 from .gitutil import git, git_rc
+from .model import call as model_call
 from .writeset import write_set
 
 # ------------------------------------------------------------------ planning ---
@@ -68,12 +69,13 @@ _JSON_ARRAY = re.compile(r"\[.*\]", re.DOTALL)
 
 
 def _claude_plan(prompt: str, model: str) -> str:
-    r = subprocess.run(
-        ["claude", "-p", prompt, "--model", model],
-        capture_output=True, text=True, timeout=240)
-    if r.returncode != 0:
-        raise RuntimeError(f"planner failed: {r.stderr.strip()[:200]}")
-    return r.stdout
+    """The planner's model seam (monkeypatched in tests).
+
+    Text in, text out — so it goes through model.py and works against the API
+    or the CLI. The repo listing it carries can be large, which is also why the
+    seam puts the prompt on stdin rather than argv.
+    """
+    return model_call(prompt, model=model, timeout=240).text
 
 
 def plan_tasks(goal: str, listing: str, agents: int, call) -> list[dict]:
@@ -126,7 +128,13 @@ def plan_tasks(goal: str, listing: str, agents: int, call) -> list[dict]:
 
 
 def _run_worker(prompt: str, model: str, timeout: int, cwd: str):
-    """The worker-agent seam (monkeypatchable in tests)."""
+    """The worker-agent seam (monkeypatchable in tests).
+
+    Deliberately NOT routed through model.py. A worker edits files, so it needs
+    an agentic tool loop rather than a single completion; the provider seam only
+    covers text-in/text-out calls. Workers stay on the CLI until such a loop
+    exists.
+    """
     return subprocess.run(
         ["claude", "-p", prompt, "--model", model,
          "--permission-mode", "acceptEdits",
