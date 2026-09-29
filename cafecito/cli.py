@@ -10,6 +10,7 @@
   cafecito ingest    land open GitHub PRs through the plane (the gateway)
   cafecito gateway   land GitHub PRs as they arrive (webhook receiver)
   cafecito watch     live dashboard of the fleet and the landed log
+  cafecito guard     hook entry: enforce the plane inside an agent harness
   cafecito doctor    environment + control-plane health checks
   cafecito gc        clean stale worktrees, leases, in-flight entries
   cafecito version
@@ -210,6 +211,15 @@ def cmd_watch(args) -> int:
     return run_watch(args)
 
 
+def cmd_guard(args) -> int:
+    """Convenience wrapper. A hook registration should invoke
+    `python3 -m cafecito.guard` instead: reaching the guard through this module
+    pays ~100ms importing the engine graph, and the guard runs on every edit and
+    every shell command an agent makes."""
+    from .guard import main as guard_main
+    return guard_main(["--repo", args.repo])
+
+
 def cmd_doctor(args) -> int:
     from .doctor import run_doctor
     return run_doctor(args)
@@ -356,6 +366,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--interval", type=float, default=1.0)
     p.add_argument("--once", action="store_true", help="print one frame and exit")
     p.set_defaults(fn=cmd_watch)
+
+    p = sub.add_parser("guard", help="hook entry: enforce the plane inside an "
+                                     "agent harness (payload on stdin)")
+    common(p)
+    p.set_defaults(fn=cmd_guard)
 
     p = sub.add_parser("doctor", help="environment + control-plane health checks")
     common(p)

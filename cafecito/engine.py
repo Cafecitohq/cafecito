@@ -32,6 +32,9 @@ import uuid
 from .facts import FactsStore
 from .gate import _is_test_file, impact_tests, run_gate, test_family
 from .gitutil import git, git_rc
+# re-exported: `from .engine import key_path` predates the split,
+# and guard imports the leaf directly to skip this module's cost.
+from .keys import key_path, keys_overlap  # noqa: F401
 from .regen import live_regen
 from .writeset import write_set
 
@@ -83,29 +86,6 @@ _RUNNER_FAMILY = {"pytest": "py", "python": "py", "tox": "py", "nox": "py",
                   "vitest": "js", "jest": "js", "mocha": "js", "node": "js",
                   "npx": "js", "npm": "js", "pnpm": "js", "yarn": "js",
                   "bun": "js", "deno": "js", "go": "go", "gotestsum": "go"}
-
-
-def key_path(key: str) -> str:
-    """The repo path a lease key covers: `file:<path>` and the oracle's
-    `<lang>:<path>::<qual>` both map to <path>; anything else covers itself."""
-    if key.startswith("file:"):
-        return key[5:]
-    head, sep, _ = key.partition("::")
-    if sep and ":" in head:
-        return head.split(":", 1)[1]
-    return key
-
-
-def keys_overlap(a: str, b: str) -> bool:
-    """Granularity-aware lease overlap. Identical keys overlap; a `file:` key
-    overlaps every key on its path (symbol leases live inside it); two
-    distinct symbols in one file do NOT overlap — symbol-disjoint writers
-    commute, so their leases must not contend either."""
-    if a == b:
-        return True
-    if key_path(a) != key_path(b):
-        return False
-    return a.startswith("file:") or b.startswith("file:")
 
 
 class Engine:
